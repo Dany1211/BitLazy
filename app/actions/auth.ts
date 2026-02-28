@@ -43,11 +43,12 @@ export async function signup(formData: FormData) {
     })
 
     if (error) {
-        redirect('/login?message=Could not authenticate user')
+        redirect('/register?message=Could not create account: ' + error.message)
     }
 
+    // Usually requires email verification first depending on Supabase settings
     revalidatePath('/', 'layout')
-    redirect('/login?message=Check email to continue sign in process')
+    redirect('/login?message=Check email to verify your account or sign in directly.')
 }
 
 export async function logout() {
