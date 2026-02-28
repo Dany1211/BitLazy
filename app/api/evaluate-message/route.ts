@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenAI, Type, Schema } from '@google/genai'
 import { createServerClientInstance } from '@/utils/supabase'
-import { computeSessionMetrics, shouldSageIntervene, AIScore } from '@/lib/metricsEngine'
+import { shouldSageIntervene, AIScore } from '@/lib/metricsEngine'
 
 // Initialize Gemini
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
@@ -26,8 +26,21 @@ const evaluationSchema: Schema = {
             type: Type.STRING,
             description: 'A one sentence explanation of the score.',
         },
+        // NEW HYBRID FIELDS
+        global_grade: {
+            type: Type.INTEGER,
+            description: 'A grade from 0 to 100 representing the overall logic, rigor, and healthy collaboration of the entire session history so far.',
+        },
+        live_advice: {
+            type: Type.STRING,
+            description: 'A single, punchy, actionable piece of advice for the participants right now (e.g., "The team is making huge assumptions about X" or "Dany needs to provide evidence").',
+        },
+        user_grades: {
+            type: Type.OBJECT,
+            description: 'A dictionary mapping each active participants name to their individual logic grade from 0 to 100.',
+        }
     },
-    required: ['semantic_depth', 'logical_gap', 'justification_type', 'explanation'],
+    required: ['semantic_depth', 'logical_gap', 'justification_type', 'explanation', 'global_grade', 'live_advice', 'user_grades'],
 }
 
 // Sage's Immutable ID
@@ -54,13 +67,13 @@ export async function POST(req: NextRequest) {
         // Ignore if Sage wrote it
         if (targetMessage.is_ai || targetMessage.user_id === SAGE_ID) return NextResponse.json({ ignored: true })
 
-        // Fetch the last 10 messages in this session for context
+        // Fetch the last 15 messages in this session for context
         const { data: contextMessages } = await supabase
             .from('messages')
             .select('content, type, profiles(name)')
             .eq('session_id', targetMessage.session_id)
             .order('created_at', { ascending: false })
-            .limit(10)
+            .limit(15)
 
         const sessionHistory = (contextMessages || [])
             .reverse()
@@ -69,7 +82,9 @@ export async function POST(req: NextRequest) {
 
         // 2. Call Gemini for Micro-Evaluation (Structured Output)
         const evalPrompt = `
-      You are an expert cognitive evaluator. Evaluate the FINAL message in this session history.
+      You are an expert cognitive evaluator monitoring an active collaboration session.
+      Evaluate the FINAL message in this session history, but also evaluate the overall health of the debate.
+      
       Session History:
       ${sessionHistory}
       ---
@@ -92,6 +107,12 @@ export async function POST(req: NextRequest) {
 
         const scoreData = JSON.parse(evaluationText)
 
+        const richEvaluationPayload = {
+            global_grade: scoreData.global_grade,
+            live_advice: scoreData.live_advice,
+            user_grades: scoreData.user_grades
+        }
+
         // 3. Insert Score into Database
         const { data: insertedScore, error: scoreError } = await supabase
             .from('ai_scores')
@@ -101,6 +122,7 @@ export async function POST(req: NextRequest) {
                 logical_gap: scoreData.logical_gap,
                 justification_type: scoreData.justification_type,
                 explanation: scoreData.explanation,
+                rich_evaluation: richEvaluationPayload
             })
             .select()
             .single()
@@ -121,16 +143,24 @@ export async function POST(req: NextRequest) {
             .from('ai_scores')
             .select('*')
             .in('message_id', messageIds)
+            .order('created_at', { ascending: false })
 
-        const metrics = computeSessionMetrics(allMessages || [], (allScores as AIScore[]) || [])
+        // Get the latest global grade for Sage intervention
+        const latestGlobalGrade = allScores && allScores.length > 0
+            ? (allScores[0] as AIScore).rich_evaluation?.global_grade || 50
+            : 50
+
         const interventionTrigger = shouldSageIntervene(
             allMessages || [],
             (insertedScore as AIScore),
-            metrics
+            latestGlobalGrade
         )
+
+        console.log(`🧠 [SAGE ENGINE] Checked Intervention:`, interventionTrigger)
 
         // 5. If Trigerred, generate Sage's response
         if (interventionTrigger.intervene && allMessages && allMessages.length > 0) {
+            console.log(`🗣️ [SAGE] Wakeup Triggered! Reason: ${interventionTrigger.reason}`)
             const { data: sessionInfo } = await supabase
                 .from('sessions')
                 .select('problem_statement')
@@ -168,7 +198,9 @@ export async function POST(req: NextRequest) {
             // Insert Sage's response
             const sageText = sageResponse.text
             if (sageText) {
+                const generatedSageId = crypto.randomUUID()
                 const { error: sageError } = await supabase.from('messages').insert({
+                    id: generatedSageId,
                     session_id: targetMessage.session_id,
                     user_id: null,
                     content: sageText.trim(),
@@ -178,7 +210,7 @@ export async function POST(req: NextRequest) {
                 if (sageError) {
                     console.error('❌ Failed to insert Sage message:', sageError)
                 } else {
-                    console.log('✅ Sage message inserted successfully!')
+                    console.log(`✅ Sage message inserted successfully with ID: ${generatedSageId}`)
                 }
             }
         }

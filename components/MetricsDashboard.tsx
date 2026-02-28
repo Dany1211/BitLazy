@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { computeSessionMetrics, AIScore } from '@/lib/metricsEngine'
+import { AIScore } from '@/lib/metricsEngine'
 import { Message } from '@/hooks/useRealtimeMessages'
 
 interface MetricsDashboardProps {
@@ -9,79 +9,90 @@ interface MetricsDashboardProps {
     scores: AIScore[]
 }
 
-const ProgressBar = ({ value, color, label }: { value: number, color: string, label: string }) => (
-    <div className="mb-4">
-        <div className="flex justify-between text-xs font-semibold mb-1 text-slate-600 uppercase tracking-wider">
-            <span>{label}</span>
-            <span>{Math.round(value * 100)}%</span>
-        </div>
-        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-            <div className={`h-2 rounded-full ${color} transition-all duration-500 ease-out`} style={{ width: `${Math.max(0, Math.min(100, value * 100))}%` }}></div>
-        </div>
-    </div>
-)
+export default function MetricsDashboard({ scores }: MetricsDashboardProps) {
 
-export default function MetricsDashboard({ messages, scores }: MetricsDashboardProps) {
-    const metrics = useMemo(() => computeSessionMetrics(messages, scores), [messages, scores])
+    // Get the latest rich evaluation payload
+    const latestEval = useMemo(() => {
+        if (!scores || scores.length === 0) return null
+        // Find the most recent score that has a rich_evaluation attached
+        const richScores = scores.filter(s => s.rich_evaluation)
+        if (richScores.length === 0) return null
+
+        // Sort by newest
+        const sorted = [...richScores].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        return sorted[0].rich_evaluation
+    }, [scores])
+
+    // Grade to Color Map
+    const getGradeColor = (grade: number) => {
+        if (grade >= 90) return 'text-emerald-500 border-emerald-200 bg-emerald-50/50 shadow-emerald-500/20'
+        if (grade >= 75) return 'text-blue-500 border-blue-200 bg-blue-50/50 shadow-blue-500/20'
+        if (grade >= 60) return 'text-amber-500 border-amber-200 bg-amber-50/50 shadow-amber-500/20'
+        return 'text-rose-500 border-rose-200 bg-rose-50/50 shadow-rose-500/20'
+    }
+
+    if (!latestEval) {
+        return (
+            <div className="bg-slate-50 border-l border-slate-200 p-6 shrink-0 w-80 hidden 2xl:flex flex-col items-center justify-center h-full">
+                <div className="w-12 h-12 border-4 border-slate-200 border-t-indigo-500 rounded-full animate-spin mb-4"></div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Awaiting AI Evaluation...</p>
+                <p className="text-[10px] text-slate-400 text-center mt-2 px-4">Start contributing to the session to generate the AI Logic Grade.</p>
+            </div>
+        )
+    }
+
+    const { global_grade, live_advice, user_grades } = latestEval
 
     return (
-        <div className="bg-slate-50 border-l border-slate-200 text-left p-6 shrink-0 w-80 hidden 2xl:block overflow-y-auto h-full">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                Cognitive Metrics
+        <div className="bg-slate-50 border-l border-slate-200 text-left p-6 shrink-0 w-80 hidden 2xl:flex flex-col overflow-y-auto h-full space-y-8">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                AI Live Evaluation
             </h3>
 
-            {/* Main Health Score */}
-            <div className="bg-slate-50 border border-slate-100 p-5 rounded-2xl mb-8 flex flex-col items-center justify-center relative overflow-hidden group">
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 group-hover:opacity-100 opacity-50 transition-opacity"></div>
-                <span className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1 z-10">Health Index</span>
-                <div className="text-5xl font-black text-slate-800 z-10">
-                    {metrics.cognitiveHealth}<span className="text-xl text-slate-400">/100</span>
+            {/* Circular Core Score */}
+            <div className={`p-8 rounded-3xl border-2 flex flex-col items-center justify-center relative overflow-hidden transition-all duration-700 shadow-[0_0_40px_rgba(0,0,0,0)] hover:shadow-xl ${getGradeColor(global_grade)}`}>
+                <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent"></div>
+                <span className="text-[10px] font-black uppercase tracking-widest mb-2 z-10 opacity-70">Session Logic Grade</span>
+                <div className="text-6xl font-black tracking-tighter z-10 drop-shadow-sm flex items-start">
+                    {global_grade}
                 </div>
-                <p className="text-xs text-slate-500 mt-2 text-center z-10">
-                    Composite score based on depth, diversity, and balance.
-                </p>
             </div>
 
-            <div className="space-y-6">
-                <div>
-                    <ProgressBar value={metrics.participationFairness} color="bg-blue-500" label="Participation Fairness" />
-                    <p className="text-[10px] text-slate-500 -mt-2 leading-relaxed">Measures equality of speaking time. Drops if one user dominates.</p>
+            {/* Live Actionable Advice Tracker */}
+            <div>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full mb-3 inline-block">Live Advice</span>
+                <div className="bg-[#0F172A] p-4 rounded-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
+                    <p className="text-sm font-medium text-slate-200 leading-snug">
+                        &quot;{live_advice}&quot;
+                    </p>
                 </div>
+            </div>
 
-                <div>
-                    <ProgressBar value={metrics.diversityIndex} color="bg-purple-500" label="Reasoning Diversity" />
-                    <p className="text-[10px] text-slate-500 -mt-2 leading-relaxed">Measures the variety of message types used (claims vs evidence vs synthesis).</p>
-                </div>
-
-                <div>
-                    <div className="flex justify-between text-xs font-semibold mb-1 text-slate-600 uppercase tracking-wider">
-                        <span>Counterargument Ratio</span>
-                        <span className={metrics.counterargumentRatio === 0 ? 'text-red-500' : ''}>{Math.round(metrics.counterargumentRatio * 100)}%</span>
-                    </div>
-                    <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden mb-1">
-                        <div className={`h-2 rounded-full ${metrics.counterargumentRatio === 0 ? 'bg-red-400' : 'bg-rose-500'} transition-all`} style={{ width: `${metrics.counterargumentRatio * 100}%` }}></div>
-                    </div>
-                    <p className="text-[10px] text-slate-500 leading-relaxed">Target: ~20-25%. Too low risks an echo chamber.</p>
-                </div>
-
-                <div>
-                    <div className="flex justify-between text-xs font-semibold mb-1 text-slate-600 uppercase tracking-wider">
-                        <span>Depth Trend</span>
-                        <span className={metrics.depthTrend > 0 ? 'text-emerald-500' : metrics.depthTrend < 0 ? 'text-red-500' : 'text-slate-500'}>
-                            {metrics.depthTrend > 0 ? '+' : ''}{(metrics.depthTrend * 100).toFixed(0)}%
-                        </span>
-                    </div>
-                    <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden relative mb-1 flex">
-                        <div className="w-1/2 flex justify-end">
-                            <div className="h-2 bg-red-400 rounded-l-full" style={{ width: `${Math.min(100, Math.max(0, -metrics.depthTrend * 100))}%` }}></div>
+            {/* Participant Leaderboard */}
+            <div className="flex-1">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 block border-b border-slate-200 pb-2">Participant Grades</span>
+                <div className="space-y-3">
+                    {Object.entries(user_grades).map(([name, grade]) => (
+                        <div key={name} className="flex items-center justify-between bg-white border border-slate-200 p-2.5 rounded-xl">
+                            <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded bg-slate-100 text-slate-600 flex items-center justify-center text-[10px] font-black uppercase">
+                                    {name.charAt(0)}
+                                </div>
+                                <span className="text-xs font-bold text-slate-700">{name}</span>
+                            </div>
+                            <div className={`text-xs font-black w-8 h-8 flex items-center justify-center rounded-lg ${grade >= 80 ? 'bg-emerald-100 text-emerald-600' :
+                                grade >= 60 ? 'bg-amber-100 text-amber-600' :
+                                    'bg-rose-100 text-rose-600'
+                                }`}>
+                                {grade}
+                            </div>
                         </div>
-                        <div className="w-1/2 flex justify-start">
-                            <div className="h-2 bg-emerald-400 rounded-r-full" style={{ width: `${Math.min(100, Math.max(0, metrics.depthTrend * 100))}%` }}></div>
-                        </div>
-                        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-slate-300"></div>
-                    </div>
-                    <p className="text-[10px] text-slate-500 leading-relaxed">Momentum of semantic depth over the last few messages.</p>
+                    ))}
+                    {Object.keys(user_grades).length === 0 && (
+                        <div className="text-xs text-slate-400 italic text-center py-4">No ranked contributors yet</div>
+                    )}
                 </div>
             </div>
         </div>
