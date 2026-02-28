@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createSession, joinSession } from '@/app/actions/sessions'
 import { logout } from '@/app/actions/auth'
+import SessionsGrid from '@/components/SessionsGrid'
 
 export default async function HomePage() {
     const supabase = await createServerClientInstance()
@@ -117,7 +118,7 @@ export default async function HomePage() {
                             <button className="text-sm font-medium text-gray-400 hover:text-red-500 px-3 py-2 rounded-lg hover:bg-red-50 transition-all">Logout</button>
                         </form>
                         {/* Avatar */}
-                        
+
                     </div>
                 </div>
             </header>
@@ -276,46 +277,8 @@ export default async function HomePage() {
                     ))}
                 </div>
 
-                {/* All sessions */}
-                <div>
-                    <div className="flex items-center justify-between mb-5">
-                        <div>
-                            <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-400 mb-1">History</p>
-                            <h2 className="text-xl font-black tracking-tight text-[#0D0D0D]">All Sessions</h2>
-                        </div>
-                        <span className="text-xs font-bold text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">{sessions?.length || 0} total</span>
-                    </div>
-
-                    {sessions && sessions.length > 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {sessions.map((session: { id: string; title: string; problem_statement: string; visibility: string; created_at: string }) => (
-                                <Link
-                                    key={session.id}
-                                    href={`/session/${session.id}`}
-                                    className="session-card group bg-white border border-gray-100 p-5 rounded-xl transition-all flex flex-col justify-between min-h-[140px]"
-                                >
-                                    <div>
-                                        <h4 className="font-black text-[#0D0D0D] group-hover:text-indigo-600 transition-colors text-sm line-clamp-1 mb-2">{session.title}</h4>
-                                        <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed font-medium">{session.problem_statement}</p>
-                                    </div>
-                                    <div className="mt-4 flex items-center justify-between border-t border-gray-50 pt-3">
-                                        <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full" style={session.visibility === 'private' ? { background: '#FFF1F2', color: '#E11D48' } : { background: '#EEF2FF', color: '#4F46E5' }}>
-                                            {session.visibility}
-                                        </span>
-                                        <span className="text-[10px] font-semibold text-gray-400">
-                                            {new Date(session.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                        </span>
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="py-16 text-center border-2 border-dashed border-gray-100 rounded-2xl bg-white">
-                            <p className="text-sm font-bold text-gray-300 uppercase tracking-widest">No sessions yet</p>
-                            <p className="text-xs text-gray-300 mt-1">Create your first room above to get started</p>
-                        </div>
-                    )}
-                </div>
+                {/* All sessions — client-side searchable */}
+                <SessionsGrid sessions={sessions || []} />
             </main>
 
             {/* Footer */}
