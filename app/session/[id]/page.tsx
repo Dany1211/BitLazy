@@ -32,11 +32,23 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
         )
     }
 
-    // Fetch All Profiles to simulate participants
+    // Fetch only the profiles of actual participants (people who sent messages) + current user
+    const { data: messages } = await supabase
+        .from('messages')
+        .select('user_id')
+        .eq('session_id', id)
+
+    // Get unique user IDs, defaulting to include the current user
+    const participantIds = messages
+        ? Array.from(new Set(messages.map(m => m.user_id).filter(Boolean)))
+        : []
+
+    if (!participantIds.includes(user.id)) participantIds.push(user.id)
+
     const { data: allProfiles } = await supabase
         .from('profiles')
         .select('*')
-        .limit(10)
+        .in('id', participantIds)
 
     const currentUserProfile = allProfiles?.find(p => p.id === user.id)
     const userInitials = currentUserProfile?.name?.charAt(0) || user.email?.charAt(0) || '?'
