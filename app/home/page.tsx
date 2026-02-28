@@ -117,9 +117,7 @@ export default async function HomePage() {
                             <button className="text-sm font-medium text-gray-400 hover:text-red-500 px-3 py-2 rounded-lg hover:bg-red-50 transition-all">Logout</button>
                         </form>
                         {/* Avatar */}
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-black text-xs uppercase" style={{ background: 'linear-gradient(135deg, #4F46E5, #7C3AED)' }}>
-                            {userInitials}
-                        </div>
+                        
                     </div>
                 </div>
             </header>

@@ -34,7 +34,7 @@ export default async function SessionPage({
                     <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-6 text-3xl">🧩</div>
                     <h2 className="text-2xl font-black text-slate-900 mb-2">Session Not Found</h2>
                     <p className="text-slate-500 font-medium mb-8">This collaborative space does not exist or has been archived.</p>
-                    <Link href="/profile" className="inline-block bg-[#0F172A] hover:bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg active:scale-95">
+                    <Link href="/home" className="inline-block bg-[#0F172A] hover:bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg active:scale-95">
                         Return to Dashboard
                     </Link>
                 </div>
@@ -73,7 +73,7 @@ export default async function SessionPage({
                         </div>
                         <h2 className="text-2xl font-black text-slate-900 mb-2">Private Session</h2>
                         <p className="text-slate-500 font-medium mb-8">You need an invite link to access this collaborative space.</p>
-                        <Link href="/profile" className="inline-block bg-[#0F172A] hover:bg-slate-800 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg active:scale-95">
+                        <Link href="/home" className="inline-block bg-[#0F172A] hover:bg-slate-800 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg active:scale-95">
                             Return to Dashboard
                         </Link>
                     </div>
@@ -99,7 +99,7 @@ export default async function SessionPage({
             {/* Top Navigation */}
             <nav className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-30">
                 <div className="flex items-center gap-4">
-                    <Link href="/profile" className="p-2 hover:bg-slate-100 rounded-lg transition-colors group">
+                    <Link href="/home" className="p-2 hover:bg-slate-100 rounded-lg transition-colors group">
                         <svg className="w-5 h-5 text-slate-400 group-hover:text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                         </svg>
