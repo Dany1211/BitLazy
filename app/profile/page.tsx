@@ -2,6 +2,7 @@ import { createServerClientInstance } from '@/utils/supabase'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createSession, joinSession } from '@/app/actions/sessions'
+import { logout } from '@/app/actions/auth'
 
 export default async function ProfilePage() {
     const supabase = await createServerClientInstance()
@@ -40,19 +41,40 @@ export default async function ProfilePage() {
             <div className="h-1.5 w-full bg-emerald-500" />
 
             {/* Navigation */}
-            <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
-                <div className="max-w-7xl mx-auto px-6 lg:px-8 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-[#0F172A] rounded flex items-center justify-center">
-                            <span className="text-emerald-400 font-bold text-lg leading-none">B</span>
+            <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200">
+                <div className="max-w-7xl mx-auto px-6 lg:px-8 h-14 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 bg-[#0F172A] rounded-lg flex items-center justify-center">
+                            <span className="text-emerald-400 font-black text-sm leading-none">B</span>
                         </div>
-                        <Link href="/" className="text-xl font-bold tracking-tight text-[#0F172A]">
+                        <Link href="/" className="text-base font-black tracking-tight text-[#0F172A] hover:text-emerald-600 transition-colors">
                             Bitlazy
                         </Link>
                     </div>
-                    <Link href="/" className="text-sm font-medium text-slate-500 hover:text-emerald-600 transition-colors px-4 py-2 hover:bg-emerald-50 rounded-lg">
-                        Return Home
-                    </Link>
+
+                    <div className="flex items-center gap-2">
+                        <Link href="/" className="text-sm font-medium text-slate-500 hover:text-slate-800 px-3 py-2 hover:bg-slate-50 rounded-lg transition-all">
+                            Home
+                        </Link>
+                        <Link
+                            href="/profile"
+                            className="flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-emerald-700 px-3 py-2 hover:bg-emerald-50 rounded-lg transition-all"
+                            title="My Profile"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            Profile
+                        </Link>
+                        <form action={logout}>
+                            <button className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-rose-600 px-3 py-2 hover:bg-rose-50 rounded-lg transition-all">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                                Logout
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </nav>
 
