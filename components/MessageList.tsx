@@ -4,6 +4,8 @@ import { Message } from '@/hooks/useRealtimeMessages'
 import { AIScore } from '@/lib/metricsEngine'
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 const badgeColors: Record<Message['type'], string> = {
     claim: 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300 shadow-sm',
@@ -11,6 +13,7 @@ const badgeColors: Record<Message['type'], string> = {
     counterargument: 'bg-[#FFDFD3] text-rose-800 border-[#FFCAB0] hover:border-rose-300 shadow-sm', // Pastel Peach
     question: 'bg-[#FEF1D0] text-amber-800 border-[#FDE5A6] hover:border-amber-400 shadow-sm', // Banana Yellow
     synthesis: 'bg-[#E0BBE4] text-purple-900 border-[#D291E4] shadow-md border-l-4 border-l-purple-500', // Lavender
+    vote_answer: 'bg-emerald-100 text-emerald-800 border-emerald-300 shadow-sm', // specialized vote message
 }
 
 export default function MessageList({ messages, scores, isLoading }: { messages: Message[], scores: AIScore[], isLoading: boolean }) {
@@ -54,6 +57,21 @@ export default function MessageList({ messages, scores, isLoading }: { messages:
                 const profile = message.profiles
                 const score = scores?.find(s => s.message_id === message.id)
                 const isSage = message.is_ai || profile?.name === 'Sage'
+
+                // If it's a vote message, render it differently
+                if (message.type === 'vote_answer' || message.content === '#VOTE_REVEAL#') {
+                    return (
+                        <div key={message.id} className="flex justify-center my-4">
+                            <div className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2 rounded-full text-xs font-bold shadow-sm animate-[fadeIn_0.5s_ease-out] flex items-center gap-2">
+                                <span className="bg-emerald-200 text-emerald-800 w-5 h-5 rounded-full flex items-center justify-center text-[10px] uppercase">
+                                    {(profile?.name || 'U').charAt(0)}
+                                </span>
+                                {profile?.name || 'User'} voted to reveal the answer.
+                            </div>
+                        </div>
+                    )
+                }
+
                 const isExpanded = expandedScores[message.id] || false
 
                 // Sages gets a completely different style card with a magical border
@@ -98,9 +116,46 @@ export default function MessageList({ messages, scores, isLoading }: { messages:
                                 </div>
                             )}
 
-                            <p className={`whitespace-pre-wrap leading-relaxed ${isSage ? 'text-slate-800 font-semibold px-4 text-center text-[15px]' : 'text-slate-800 text-[15px]'}`}>
-                                {message.content}
-                            </p>
+                            {isSage ? (
+                                <div className="text-left w-full text-[15px] leading-relaxed">
+                                    <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
+                                        components={{
+                                            h1: ({ node, ...props }: any) => <h1 className="text-2xl font-black mt-6 mb-4 text-[#0F172A] flex items-center gap-2" {...props} />,
+                                            h2: ({ node, ...props }: any) => <h2 className="text-xl font-bold mt-5 mb-3 text-slate-800" {...props} />,
+                                            h3: ({ node, ...props }: any) => <h3 className="text-lg font-bold mt-4 mb-2 text-indigo-900" {...props} />,
+                                            p: ({ node, ...props }: any) => <p className="mb-4 text-slate-700 last:mb-0" {...props} />,
+                                            ul: ({ node, ...props }: any) => <ul className="list-disc pl-6 mb-4 space-y-2 text-slate-700 marker:text-indigo-400" {...props} />,
+                                            ol: ({ node, ...props }: any) => <ol className="list-decimal pl-6 mb-4 space-y-2 text-slate-700 marker:text-emerald-500 font-medium" {...props} />,
+                                            li: ({ node, ...props }: any) => <li className="" {...props} />,
+                                            strong: ({ node, ...props }: any) => <strong className="font-black text-slate-900 bg-emerald-500/10 px-1 rounded" {...props} />,
+                                            em: ({ node, ...props }: any) => <em className="italic text-slate-600" {...props} />,
+                                            blockquote: ({ node, ...props }: any) => (
+                                                <blockquote className="border-l-4 border-indigo-400 pl-4 py-3 pr-4 my-6 bg-gradient-to-r from-indigo-50/80 to-transparent rounded-r-xl italic text-slate-700 shadow-sm" {...props} />
+                                            ),
+                                            table: ({ node, ...props }: any) => (
+                                                <div className="overflow-hidden rounded-xl border border-slate-200 shadow-sm my-6">
+                                                    <table className="min-w-full divide-y divide-slate-200" {...props} />
+                                                </div>
+                                            ),
+                                            th: ({ node, ...props }: any) => <th className="px-4 py-3 bg-slate-50 text-left text-xs font-black text-slate-500 uppercase tracking-widest border-b border-slate-200" {...props} />,
+                                            td: ({ node, ...props }: any) => <td className="px-4 py-3 text-sm text-slate-700 border-b border-slate-100 last:border-0" {...props} />,
+                                            code: ({ node, inline, ...props }: any) =>
+                                                inline
+                                                    ? <code className="bg-slate-100 text-pink-600 px-1.5 py-0.5 rounded-md text-[13px] font-mono font-bold" {...props} />
+                                                    : <div className="bg-[#0F172A] rounded-xl p-4 my-4 overflow-x-auto shadow-inner w-full max-w-full"><code className="text-emerald-400 text-[13px] font-mono block whitespace-pre" {...props} /></div>
+                                        }}
+                                    /* eslint-enable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
+                                    >
+                                        {message.content}
+                                    </ReactMarkdown>
+                                </div>
+                            ) : (
+                                <p className="whitespace-pre-wrap leading-relaxed text-slate-800 text-[15px]">
+                                    {message.content}
+                                </p>
+                            )}
 
                             {/* Playful Evaluator Tag - HIDDEN BY DEFAULT */}
                             {score && !isSage && (

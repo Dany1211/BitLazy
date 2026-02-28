@@ -4,12 +4,21 @@ import React, { useState } from 'react'
 import Link from 'next/link'
 import SessionChat from '@/components/SessionChat'
 import SessionSynthesis from '@/components/SessionSynthesis'
+import ShareSessionModal from '@/components/ShareSessionModal'
+import { usePresence } from '@/hooks/usePresence'
+
+interface Profile {
+    id: string
+    name: string | null
+    avatar_url: string | null
+    role: string | null
+}
 
 interface SessionViewProps {
-    session: any
-    allProfiles: any[] | null
-    user: any
-    currentUserProfile: any
+    session: { title: string, problem_statement: string, created_at: string, visibility?: string, invite_code?: string, id?: string }
+    allProfiles: Profile[] | null
+    user: { id: string }
+    currentUserProfile: Profile | null | undefined
     userInitials: string
     sessionId: string
 }
@@ -24,13 +33,20 @@ export default function SessionView({
 }: SessionViewProps) {
     const [showSynthesis, setShowSynthesis] = useState(false)
     const [showSidebar, setShowSidebar] = useState(true)
+    const [mounted, setMounted] = useState(false)
+
+    React.useEffect(() => {
+        setMounted(true)
+    }, [])
+
+    const { onlineUsers } = usePresence(sessionId, user.id)
 
     return (
         <div className="h-screen bg-[#F8FAFC] flex flex-col font-sans antialiased overflow-hidden">
             {/* Top Navigation */}
             <nav className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-30 shadow-sm">
                 <div className="flex items-center gap-4">
-                    <Link href="/profile" className="p-2 hover:bg-slate-100 rounded-lg transition-colors group">
+                    <Link href="/home" className="p-2 hover:bg-slate-100 rounded-lg transition-colors group">
                         <svg className="w-5 h-5 text-slate-400 group-hover:text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                         </svg>
@@ -52,6 +68,37 @@ export default function SessionView({
                 </div>
 
                 <div className="flex items-center gap-3 sm:gap-6">
+                    <div className="hidden sm:block">
+                        <ShareSessionModal inviteCode={session.invite_code} visibility={session.visibility} />
+                    </div>
+
+                    <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
+
+                    {/* Collaborators Avatars */}
+                    <div className="hidden sm:flex items-center gap-2">
+                        <div className="flex -space-x-2">
+                            {allProfiles?.slice(0, 3).map((p) => {
+                                const isActive = onlineUsers.has(p.id) || p.id === user.id
+                                return (
+                                    <div key={p.id} title={p.name || 'User'} className={`w-8 h-8 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-[10px] font-black uppercase overflow-hidden ring-1 ${isActive ? 'ring-emerald-400 text-emerald-600' : 'ring-slate-100 text-slate-400'}`}>
+                                        {p.avatar_url ? (
+                                            <img src={p.avatar_url} alt={p.name || 'User'} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span>{p.name?.charAt(0) || 'U'}</span>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                            {allProfiles && allProfiles.length > 3 && (
+                                <div className="w-8 h-8 rounded-full border-2 border-white bg-[#0F172A] flex items-center justify-center text-[10px] font-black text-emerald-400 shadow-sm ring-1 ring-slate-100">
+                                    +{allProfiles.length - 3}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
+
                     {/* Perspective Toggles */}
                     <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner">
                         <button
@@ -69,14 +116,15 @@ export default function SessionView({
                     <div className="flex items-center gap-3">
                         <div className="hidden lg:block text-right">
                             <p className="text-[10px] font-black text-[#0F172A] uppercase leading-none">{currentUserProfile?.name || 'Explorer'}</p>
-                            <p className="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-wider">Active Now</p>
+                            <p className="text-[9px] font-bold text-emerald-500 uppercase mt-1 tracking-wider">Active Now</p>
                         </div>
-                        <div className="w-9 h-9 rounded-xl bg-[#0F172A] p-0.5 border border-slate-200 shadow-sm relative group cursor-pointer transition-transform hover:scale-105">
+                        <div className="w-9 h-9 rounded-xl bg-[#0F172A] p-0.5 border border-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.3)] relative group cursor-pointer transition-transform hover:scale-105">
                             <div className="w-full h-full bg-slate-900 rounded-[9px] flex items-center justify-center text-emerald-400 font-black text-xs uppercase overflow-hidden">
                                 {currentUserProfile?.avatar_url ? (
-                                    <img src={currentUserProfile.avatar_url} className="w-full h-full object-cover" />
+                                    <img src={currentUserProfile.avatar_url} alt={currentUserProfile.name || 'User'} className="w-full h-full object-cover" />
                                 ) : userInitials}
                             </div>
+                            <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white shadow-sm" />
                         </div>
                     </div>
                 </div>
@@ -98,7 +146,7 @@ export default function SessionView({
                             <div className="space-y-4">
                                 <div className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/10">
                                     <span className="text-[11px] font-bold text-slate-400">Created</span>
-                                    <span className="text-[11px] font-black text-slate-200 uppercase">{new Date(session.created_at).toLocaleDateString()}</span>
+                                    <span className="text-[11px] font-black text-slate-200 uppercase">{mounted ? new Date(session.created_at).toLocaleDateString() : ''}</span>
                                 </div>
                                 <div className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/10">
                                     <span className="text-[11px] font-bold text-slate-400">Status</span>
@@ -108,20 +156,54 @@ export default function SessionView({
                         </section>
 
                         <section>
-                            <label className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] block mb-4">Core Participants</label>
-                            <div className="space-y-2">
-                                {allProfiles?.map((p) => (
-                                    <div key={p.id} className="flex items-center gap-3 group cursor-pointer hover:bg-white/5 p-2 rounded-xl transition-all border border-transparent hover:border-white/10">
-                                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-black text-[10px] uppercase overflow-hidden">
-                                            {p.avatar_url ? <img src={p.avatar_url} className="w-full h-full object-cover" /> : (p.name?.charAt(0) || 'U')}
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-xs font-bold text-slate-300 group-hover:text-white transition-colors">{p.name || 'Anonymous Collaborator'}</span>
-                                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tight">{p.id === user.id ? 'You' : (p.role || 'Contributor')}</span>
-                                        </div>
-                                        {p.id === user.id && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>}
+                            <label className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] block mb-4">
+                                Core Participants
+                                <span className="ml-2 text-emerald-500/50 font-medium normal-case tracking-normal">
+                                    ({allProfiles?.length || 0})
+                                </span>
+                            </label>
+                            <div className="space-y-1.5">
+                                <div className="flex items-center gap-3 group hover:bg-white/5 px-2 py-2 rounded-xl transition-all border border-transparent hover:border-white/8">
+                                    <div className="relative w-8 h-8 rounded-lg flex items-center justify-center font-black text-[10px] uppercase overflow-hidden shrink-0 bg-indigo-500/15 border border-indigo-500/30 text-indigo-400">
+                                        S
                                     </div>
-                                ))}
+                                    <div className="flex-1 min-w-0">
+                                        <span className="text-xs font-bold text-slate-300 block truncate">Sage</span>
+                                        <span className="text-[9px] font-bold uppercase tracking-tight text-indigo-400">AI · Always Active</span>
+                                    </div>
+                                </div>
+
+                                {/* Human participants */}
+                                {allProfiles?.map((p) => {
+                                    const isYou = p.id === user.id
+                                    const isActive = onlineUsers.has(p.id) || isYou
+                                    return (
+                                        <div key={p.id} className="flex items-center gap-3 group cursor-default hover:bg-white/5 px-2 py-2 rounded-xl transition-all border border-transparent hover:border-white/8">
+                                            {/* Avatar with active ring */}
+                                            <div className={`relative w-8 h-8 rounded-lg flex items-center justify-center font-black text-[10px] uppercase overflow-hidden shrink-0 ${isActive
+                                                ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400'
+                                                : 'bg-white/5 border border-white/10 text-slate-500'
+                                                }`}>
+                                                {p.avatar_url
+                                                    ? <img src={p.avatar_url} className="w-full h-full object-cover" alt={p.name || ''} />
+                                                    : (p.name?.charAt(0) || 'U')
+                                                }
+                                                {/* Status dot */}
+                                                <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#0F172A] ${isActive ? 'bg-emerald-500' : 'bg-slate-600'
+                                                    }`} />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <span className="text-xs font-bold text-slate-300 group-hover:text-white transition-colors block truncate">
+                                                    {p.name || 'Anonymous'}{isYou ? ' (you)' : ''}
+                                                </span>
+                                                <span className={`text-[9px] font-bold uppercase tracking-tight ${isActive ? 'text-emerald-500' : 'text-slate-600'
+                                                    }`}>
+                                                    {isActive ? 'Active' : 'Away'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
                             </div>
                         </section>
                     </div>
@@ -140,7 +222,7 @@ export default function SessionView({
 
                 {/* Center Pane: Chat Application */}
                 <main className="flex-1 flex flex-col relative bg-white z-10 shadow-xl min-w-0">
-                    <SessionChat sessionId={sessionId} userId={user.id} />
+                    <SessionChat sessionId={sessionId} userId={user.id} participants={allProfiles || []} />
                 </main>
 
                 {/* Right Pane: Session Synthesis */}
