@@ -2,6 +2,7 @@ import { createServerClientInstance } from '@/utils/supabase'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import SessionChat from '@/components/SessionChat'
+import SessionSynthesis from '@/components/SessionSynthesis'
 
 export default async function SessionPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
@@ -150,18 +151,10 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
                     <SessionChat sessionId={id} userId={user.id} />
                 </main>
 
-                {/* Right Pane: Resources (Collapsible Placeholder) */}
-                <aside className="w-80 bg-slate-50 border-l border-slate-200 hidden xl:flex flex-col shrink-0">
-                    <div className="p-6 border-b border-slate-200 bg-white">
-                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Synthesis & Notes</h3>
-                    </div>
-                    <div className="flex-1 p-6 flex flex-col items-center justify-center text-center">
-                        <div className="w-12 h-12 bg-white rounded-xl shadow-sm border border-slate-200 flex items-center justify-center mb-4 text-xl">📝</div>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No notes compiled yet</p>
-                        <p className="mt-2 text-[11px] text-slate-400 max-w-[160px] leading-relaxed">System-generated synthesis will appear here as the session progresses.</p>
-                    </div>
-                </aside>
+                {/* Right Pane: Session Synthesis */}
+                <SessionSynthesis sessionId={id} />
             </div>
         </div>
     )
 }
+

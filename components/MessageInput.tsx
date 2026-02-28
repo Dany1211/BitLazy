@@ -16,15 +16,30 @@ export default function MessageInput({ sessionId, userId }: { sessionId: string,
 
         setIsSending(true)
 
-        const { error } = await supabase.from('messages').insert({
-            session_id: sessionId,
-            user_id: userId,
-            content: trimmed,
-            type,
-        })
+        const generatedId = crypto.randomUUID()
+
+        const { error } = await supabase
+            .from('messages')
+            .insert({
+                id: generatedId,
+                session_id: sessionId,
+                user_id: userId,
+                content: trimmed,
+                type,
+            })
 
         if (!error) {
             setContent('')
+
+            // Fire-and-forget background evaluation
+            console.log('🚀 Triggering background evaluation for message:', generatedId)
+            fetch('/api/evaluate-message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messageId: generatedId })
+            }).then(res => console.log('✅ Eval API response:', res.status))
+                .catch(err => console.error('❌ Failed to trigger evaluation:', err))
+
         } else {
             console.error('Error sending message:', error)
         }
@@ -48,8 +63,8 @@ export default function MessageInput({ sessionId, userId }: { sessionId: string,
                             key={t}
                             onClick={() => setType(t)}
                             className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border-2 ${type === t
-                                    ? 'bg-[#0F172A] text-emerald-400 border-[#0F172A]'
-                                    : 'bg-white text-slate-400 border-transparent hover:border-slate-200'
+                                ? 'bg-[#0F172A] text-emerald-400 border-[#0F172A]'
+                                : 'bg-white text-slate-400 border-transparent hover:border-slate-200'
                                 }`}
                         >
                             {t}

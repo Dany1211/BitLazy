@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { AIScore } from '@/lib/metricsEngine'
 
 export type MessageType = 'claim' | 'evidence' | 'counterargument' | 'question' | 'synthesis'
 
@@ -10,6 +11,7 @@ export interface Message {
     content: string
     type: MessageType
     created_at: string
+    is_ai?: boolean
     profiles?: {
         name: string
         avatar_url: string | null
@@ -18,29 +20,44 @@ export interface Message {
 
 export function useRealtimeMessages(sessionId: string) {
     const [messages, setMessages] = useState<Message[]>([])
+    const [scores, setScores] = useState<AIScore[]>([])
     const [isLoading, setIsLoading] = useState(true)
 
     useEffect(() => {
         let isMounted = true
 
-        async function fetchMessages() {
+        async function fetchInitialData() {
             setIsLoading(true)
-            const { data, error } = await supabase
+
+            // Fetch messages
+            const { data: messagesData, error: messagesError } = await supabase
                 .from('messages')
                 .select('*, profiles(name, avatar_url)')
                 .eq('session_id', sessionId)
                 .order('created_at', { ascending: true })
 
-            if (!error && data && isMounted) {
-                setMessages(data as Message[])
+            // Fetch scores for those messages
+            const msgIds = (messagesData || []).map(m => m.id)
+            let scoresData: AIScore[] = []
+            if (msgIds.length > 0) {
+                const { data: sData } = await supabase
+                    .from('ai_scores')
+                    .select('*')
+                    .in('message_id', msgIds)
+                if (sData) scoresData = sData as AIScore[]
+            }
+
+            if (!messagesError && messagesData && isMounted) {
+                setMessages(messagesData as Message[])
+                setScores(scoresData)
             }
             if (isMounted) setIsLoading(false)
         }
 
-        fetchMessages()
+        fetchInitialData()
 
-        const channel = supabase
-            .channel(`realtime:session:${sessionId}`)
+        const msgChannel = supabase
+            .channel(`messages_channel_${sessionId}`)
             .on(
                 'postgres_changes',
                 {
@@ -50,7 +67,7 @@ export function useRealtimeMessages(sessionId: string) {
                     filter: `session_id=eq.${sessionId}`,
                 },
                 async (payload) => {
-                    // Fetch the profile for the new message since it won't be included in the INSERT payload
+                    console.log('Realtime received message:', payload)
                     const { data: profile } = await supabase
                         .from('profiles')
                         .select('name, avatar_url')
@@ -62,16 +79,51 @@ export function useRealtimeMessages(sessionId: string) {
                         profiles: profile || { name: 'Unknown User', avatar_url: null },
                     } as Message
 
-                    setMessages((prev) => [...prev, newMessage])
+                    setMessages((prev) => {
+                        const exists = prev.find((m) => m.id === newMessage.id)
+                        if (exists) return prev
+                        return [...prev, newMessage]
+                    })
                 }
             )
-            .subscribe()
+            .subscribe((status) => {
+                console.log('Messages channel status:', status)
+            })
+
+        const scoreChannel = supabase
+            .channel(`scores_channel_${sessionId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'ai_scores',
+                },
+                (payload) => {
+                    console.log('Realtime received score:', payload)
+                    setMessages(currentMessages => {
+                        const belongsToSession = currentMessages.some(m => m.id === payload.new.message_id)
+                        if (belongsToSession) {
+                            setScores(prev => {
+                                const exists = prev.find(s => s.id === payload.new.id)
+                                if (exists) return prev
+                                return [...prev, payload.new as AIScore]
+                            })
+                        }
+                        return currentMessages
+                    })
+                }
+            )
+            .subscribe((status) => {
+                console.log('Scores channel status:', status)
+            })
 
         return () => {
             isMounted = false
-            supabase.removeChannel(channel)
+            supabase.removeChannel(msgChannel)
+            supabase.removeChannel(scoreChannel)
         }
     }, [sessionId])
 
-    return { messages, isLoading }
+    return { messages, scores, isLoading }
 }
