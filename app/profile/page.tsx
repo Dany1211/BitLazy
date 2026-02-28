@@ -1,192 +1,173 @@
 import { createServerClientInstance } from '@/utils/supabase'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { createSession } from '@/app/actions/sessions'
 
 export default async function ProfilePage() {
     const supabase = await createServerClientInstance()
 
-    // Ensure user is authenticated
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) redirect('/login')
 
-    if (!user) {
-        redirect('/login')
-    }
-
-    // Fetch the public profile
     const { data: profile } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single()
 
-    // Fetch created sessions
     const { data: sessions } = await supabase
         .from('sessions')
         .select('*')
         .order('created_at', { ascending: false })
 
+    const userInitials = profile?.name?.charAt(0) || user.email?.charAt(0) || '?'
+
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+        <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] font-sans antialiased">
+            {/* Minimal Top Border Accent */}
+            <div className="h-1.5 w-full bg-emerald-500" />
+
             {/* Navigation */}
-            <nav className="bg-white border-b border-slate-200">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between h-16">
-                        <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-                                <span className="text-white font-bold text-lg leading-none">B</span>
-                            </div>
-                            <Link href="/" className="text-xl font-bold text-slate-900 tracking-tight">
-                                Bitlazy
-                            </Link>
+            <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
+                <div className="max-w-7xl mx-auto px-6 lg:px-8 h-16 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-[#0F172A] rounded flex items-center justify-center">
+                            <span className="text-emerald-400 font-bold text-lg leading-none">B</span>
                         </div>
-                        <div className="flex items-center">
-                            <Link
-                                href="/"
-                                className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors mr-4"
-                            >
-                                Back to Home
-                            </Link>
-                        </div>
+                        <Link href="/" className="text-xl font-bold tracking-tight text-[#0F172A]">
+                            Bitlazy
+                        </Link>
                     </div>
+                    <Link href="/" className="text-sm font-medium text-slate-500 hover:text-emerald-600 transition-colors px-4 py-2 hover:bg-emerald-50 rounded-lg">
+                        Return Home
+                    </Link>
                 </div>
             </nav>
 
-            {/* Main Content */}
-            <main className="flex-1 py-10">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <main className="max-w-7xl mx-auto px-6 lg:px-8 py-12">
+                <div className="flex flex-col lg:flex-row gap-16">
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Left Column: Profile Card */}
-                        <div className="lg:col-span-1">
-                            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                                <div className="bg-indigo-600 h-32 relative"></div>
-
-                                <div className="px-6 pb-10">
-                                    <div className="relative -mt-16 flex flex-col items-center mb-6">
-                                        <div className="h-32 w-32 rounded-full border-4 border-white bg-indigo-100 overflow-hidden shadow-sm flex items-center justify-center">
-                                            {profile?.avatar_url ? (
-                                                <img
-                                                    src={profile.avatar_url}
-                                                    alt="Avatar"
-                                                    className="h-full w-full object-cover"
-                                                />
-                                            ) : (
-                                                <span className="text-4xl font-semibold text-indigo-400">
-                                                    {profile?.name?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase()}
-                                                </span>
-                                            )}
+                    {/* Profile Sidebar (Fixed Width on Desktop) */}
+                    <aside className="w-full lg:w-80 shrink-0">
+                        <div className="sticky top-24 space-y-8">
+                            {/* Profile Identity */}
+                            <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
+                                <div className="h-32 w-32 rounded-2xl bg-white shadow-sm overflow-hidden border border-slate-200 p-1.5">
+                                    {profile?.avatar_url ? (
+                                        <img src={profile.avatar_url} alt="Avatar" className="h-full w-full object-cover rounded-xl" />
+                                    ) : (
+                                        <div className="h-full w-full bg-[#0F172A] flex items-center justify-center rounded-xl">
+                                            <span className="text-3xl font-bold text-emerald-400 uppercase">{userInitials}</span>
                                         </div>
-                                        <h1 className="text-2xl font-bold text-slate-900 truncate mt-4">
-                                            {profile?.name || 'Anonymous User'}
-                                        </h1>
-                                        <p className="text-sm font-medium text-slate-500">
-                                            {user.email}
-                                        </p>
-                                        <span className="mt-3 inline-flex items-center rounded-md bg-green-50 px-3 py-1 text-sm font-medium text-green-700 ring-1 ring-inset ring-green-600/20 capitalize shadow-sm">
-                                            {profile?.role || 'User'}
-                                        </span>
-                                    </div>
+                                    )}
+                                </div>
+                                <div className="mt-6">
+                                    <h1 className="text-2xl font-bold text-slate-900 leading-tight">
+                                        {profile?.name || 'Explorer'}
+                                    </h1>
+                                    <p className="text-slate-500 text-sm font-medium truncate max-w-[200px]">{user.email}</p>
+                                    <span className="mt-3 inline-block px-3 py-1 bg-emerald-100 text-emerald-700 text-[11px] font-bold uppercase tracking-wider rounded-md">
+                                        {profile?.role || 'Contributor'}
+                                    </span>
+                                </div>
+                            </div>
 
-                                    <div className="border-t border-slate-100 pt-6">
-                                        <h3 className="text-sm font-semibold text-slate-900 mb-4 uppercase tracking-wider">Account Details</h3>
-                                        <dl className="space-y-4">
-                                            <div>
-                                                <dt className="text-xs font-medium text-slate-500">Member Since</dt>
-                                                <dd className="mt-1 text-sm text-slate-900 font-medium">
-                                                    {new Date(profile?.created_at || user.created_at).toLocaleDateString()}
-                                                </dd>
-                                            </div>
-                                            <div>
-                                                <dt className="text-xs font-medium text-slate-500">Account ID</dt>
-                                                <dd className="mt-1 text-xs text-slate-900 font-mono truncate">{user.id}</dd>
-                                            </div>
-                                        </dl>
-                                    </div>
+                            {/* Info Block */}
+                            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4">
+                                <div className="flex justify-between items-end">
+                                    <span className="text-xs font-bold text-slate-400 uppercase">Member Since</span>
+                                    <span className="text-sm font-semibold text-slate-700">
+                                        {new Date(profile?.created_at || user.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short' })}
+                                    </span>
+                                </div>
+                                <div className="pt-4 border-t border-slate-100">
+                                    <label className="text-xs font-bold text-slate-400 uppercase block mb-2">Internal UID</label>
+                                    <code className="text-[10px] text-slate-400 bg-slate-50 p-2 block rounded break-all border border-slate-100">
+                                        {user.id}
+                                    </code>
                                 </div>
                             </div>
                         </div>
+                    </aside>
 
-                        {/* Right Column: Sessions list and creation */}
-                        <div className="lg:col-span-2 space-y-8">
+                    {/* Main Content Area */}
+                    <div className="flex-1 space-y-12">
 
-                            {/* Create Session Form */}
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                                <h3 className="text-lg font-bold text-slate-900 mb-4">Start New Collaborative Session</h3>
-                                <form className="space-y-4">
-                                    <div>
-                                        <label htmlFor="title" className="block text-sm font-medium text-slate-700">
-                                            Session Title
-                                        </label>
+                        {/* Section: Create */}
+                        <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div className="px-8 py-6 border-b border-slate-100 bg-slate-50/50">
+                                <h3 className="text-lg font-bold text-slate-800">New Collaborative Session</h3>
+                            </div>
+                            <form action={createSession} className="p-8 space-y-6">
+                                <div className="grid grid-cols-1 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-slate-500 uppercase ml-1">Session Title</label>
                                         <input
-                                            type="text"
                                             name="title"
-                                            id="title"
                                             required
-                                            placeholder="e.g., Analyzing the impact of AI on education"
-                                            className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border"
+                                            placeholder="e.g. Architecture Review"
+                                            className="w-full bg-white border border-slate-200 rounded-lg px-4 py-3 text-sm focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 transition-all outline-none"
                                         />
                                     </div>
-                                    <div>
-                                        <label htmlFor="problem_statement" className="block text-sm font-medium text-slate-700">
-                                            Problem Statement
-                                        </label>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-slate-500 uppercase ml-1">Problem Statement</label>
                                         <textarea
                                             name="problem_statement"
-                                            id="problem_statement"
-                                            rows={3}
+                                            rows={4}
                                             required
-                                            placeholder="Describe the main problem we are trying to solve..."
-                                            className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border resize-none"
+                                            placeholder="What specific outcome are we looking for?"
+                                            className="w-full bg-white border border-slate-200 rounded-lg px-4 py-3 text-sm focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 transition-all outline-none resize-none"
                                         />
                                     </div>
-                                    <div className="pt-2">
-                                        <button
-                                            formAction={async (formData) => {
-                                                'use server';
-                                                const { createSession } = await import('@/app/actions/sessions');
-                                                await createSession(formData);
-                                            }}
-                                            className="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors"
-                                        >
-                                            Create Session
-                                        </button>
-                                    </div>
-                                </form>
+                                </div>
+                                <div className="flex justify-end">
+                                    <button className="bg-[#0F172A] hover:bg-emerald-600 text-white px-8 py-3 rounded-lg font-bold text-sm transition-all shadow-lg shadow-slate-200 hover:shadow-emerald-200 active:scale-95">
+                                        Initialize Session
+                                    </button>
+                                </div>
+                            </form>
+                        </section>
+
+                        {/* Section: Sessions List */}
+                        <section className="space-y-6">
+                            <div className="flex items-center justify-between px-2">
+                                <h3 className="text-lg font-bold text-slate-800">Project History</h3>
+                                <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">{sessions?.length || 0} Total</span>
                             </div>
 
-                            {/* List Valid Sessions */}
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                                <h3 className="text-lg font-bold text-slate-900 mb-4">Active Sessions</h3>
-                                {sessions && sessions.length > 0 ? (
-                                    <div className="grid gap-4 sm:grid-cols-2">
-                                        {sessions.map((session) => (
-                                            <Link
-                                                key={session.id}
-                                                href={`/session/${session.id}`}
-                                                className="block group p-4 border border-slate-200 rounded-xl hover:border-indigo-500 hover:shadow-md transition-all bg-slate-50 hover:bg-white"
-                                            >
-                                                <h4 className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors mb-1 truncate">
+                            {sessions && sessions.length > 0 ? (
+                                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
+                                    {sessions.map((session) => (
+                                        <Link
+                                            key={session.id}
+                                            href={`/session/${session.id}`}
+                                            className="group bg-white border border-slate-200 p-6 rounded-xl hover:border-emerald-300 transition-all hover:shadow-md flex flex-col justify-between min-h-[160px]"
+                                        >
+                                            <div>
+                                                <h4 className="font-bold text-slate-900 group-hover:text-emerald-600 transition-colors line-clamp-1">
                                                     {session.title}
                                                 </h4>
-                                                <p className="text-sm text-slate-500 line-clamp-2 mb-3">
+                                                <p className="mt-2 text-sm text-slate-500 line-clamp-2 leading-relaxed">
                                                     {session.problem_statement}
                                                 </p>
-                                                <div className="flex items-center text-xs text-slate-400">
-                                                    <span>Created {new Date(session.created_at).toLocaleDateString()}</span>
-                                                </div>
-                                            </Link>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-300">
-                                        <p className="text-slate-500">No active collaborative sessions yet.</p>
-                                    </div>
-                                )}
-                            </div>
-
-                        </div>
+                                            </div>
+                                            <div className="mt-6 flex items-center justify-between border-t border-slate-50 pt-4">
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                                                    ID: {session.id.slice(0, 8)}
+                                                </span>
+                                                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
+                                                    {new Date(session.created_at).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="py-20 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                                    <p className="text-slate-400 text-sm font-medium uppercase tracking-widest">No active history found</p>
+                                </div>
+                            )}
+                        </section>
                     </div>
 
                 </div>

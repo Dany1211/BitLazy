@@ -40,35 +40,44 @@ export default function MessageInput({ sessionId, userId }: { sessionId: string,
     }
 
     return (
-        <div className="bg-white border-t border-slate-200 p-4 shrink-0">
-            <div className="max-w-4xl mx-auto flex flex-col gap-3">
-                <select
-                    value={type}
-                    onChange={(e) => setType(e.target.value as MessageType)}
-                    className="w-48 appearance-none bg-slate-50 border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 font-medium"
-                >
-                    <option value="claim">Claim</option>
-                    <option value="evidence">Evidence</option>
-                    <option value="counterargument">Counterargument</option>
-                    <option value="question">Question</option>
-                    <option value="synthesis">Synthesis</option>
-                </select>
+        <div className="px-8 pb-8 pt-2">
+            <div className="bg-slate-50 border border-slate-200 rounded-[2rem] p-3 shadow-2xl shadow-slate-200/50 flex flex-col gap-3 group focus-within:border-emerald-200 focus-within:bg-white transition-all">
+                <div className="flex items-center gap-2 px-2 overflow-x-auto no-scrollbar">
+                    {(['claim', 'evidence', 'counterargument', 'question', 'synthesis'] as MessageType[]).map((t) => (
+                        <button
+                            key={t}
+                            onClick={() => setType(t)}
+                            className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border-2 ${type === t
+                                    ? 'bg-[#0F172A] text-emerald-400 border-[#0F172A]'
+                                    : 'bg-white text-slate-400 border-transparent hover:border-slate-200'
+                                }`}
+                        >
+                            {t}
+                        </button>
+                    ))}
+                </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                     <textarea
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder="Type your reasoning... (Press Enter to send, Shift+Enter for new line)"
-                        className="w-full resize-none border border-slate-300 rounded-lg p-3 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        rows={2}
+                        placeholder="Contribute to reasoning..."
+                        className="flex-1 bg-transparent resize-none px-4 py-3 text-sm font-medium text-[#0F172A] placeholder-slate-300 focus:outline-none"
+                        rows={1}
                     />
                     <button
                         onClick={handleSend}
                         disabled={!content.trim() || isSending}
-                        className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
+                        className="w-12 h-12 bg-[#0F172A] hover:bg-emerald-600 text-emerald-400 rounded-2xl flex items-center justify-center transition-all disabled:opacity-30 disabled:grayscale active:scale-95 shrink-0 shadow-lg shadow-slate-200"
                     >
-                        {isSending ? 'Sending...' : 'Send'}
+                        {isSending ? (
+                            <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                            </svg>
+                        )}
                     </button>
                 </div>
             </div>

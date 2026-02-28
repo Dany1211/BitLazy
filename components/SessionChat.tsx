@@ -8,7 +8,7 @@ export default function SessionChat({ sessionId, userId }: { sessionId: string, 
     const { messages, isLoading } = useRealtimeMessages(sessionId)
 
     return (
-        <div className="flex flex-col h-[calc(100vh-14rem)] bg-slate-50 border border-slate-200 rounded-2xl shadow-sm overflow-hidden mt-6">
+        <div className="flex flex-col h-full bg-white relative">
             <MessageList messages={messages} isLoading={isLoading} />
             <MessageInput sessionId={sessionId} userId={userId} />
         </div>

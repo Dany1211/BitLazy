@@ -1,41 +1,19 @@
-'use server'
+'use server';
 
-import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
-import { createServerClientInstance } from '@/utils/supabase'
+import { createServerClientInstance } from '@/utils/supabase';
+import { revalidatePath } from 'next/cache';
 
 export async function createSession(formData: FormData) {
-    const supabase = await createServerClientInstance()
+    const supabase = await createServerClientInstance();
+    const title = formData.get('title') as string;
+    const problem_statement = formData.get('problem_statement') as string;
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Unauthorized");
 
-    if (!user) {
-        redirect('/login')
-    }
-
-    const title = formData.get('title') as string
-    const problemStatement = formData.get('problem_statement') as string
-
-    if (!title || !problemStatement) {
-        return { error: 'Title and problem statement are required' }
-    }
-
-    const { data: session, error } = await supabase
+    const { error } = await supabase
         .from('sessions')
-        .insert({
-            title,
-            problem_statement: problemStatement,
-        })
-        .select('id')
-        .single()
+        .insert([{ title, problem_statement, user_id: user.id }]);
 
-    if (error || !session) {
-        console.error('Failed to create session:', error)
-        return { error: 'Failed to create session' }
-    }
-
-    revalidatePath('/profile')
-    redirect(`/session/${session.id}`)
+    if (!error) revalidatePath('/profile');
 }
