@@ -1,9 +1,10 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import Link from 'next/link'
 import SessionChat from '@/components/SessionChat'
 import SessionSynthesis from '@/components/SessionSynthesis'
+import { useRealtimeMessages } from '@/hooks/useRealtimeMessages'
 
 interface SessionViewProps {
     session: any
@@ -24,6 +25,19 @@ export default function SessionView({
 }: SessionViewProps) {
     const [showSynthesis, setShowSynthesis] = useState(false)
     const [showSidebar, setShowSidebar] = useState(true)
+
+    // Use realtime messages to derive who is actually active
+    const { messages } = useRealtimeMessages(sessionId)
+
+    // A participant is "active" if they sent a message in the last 15 minutes
+    const activeIds = useMemo(() => {
+        const cutoff = Date.now() - 15 * 60 * 1000
+        return new Set(
+            messages
+                .filter(m => !m.is_ai && new Date(m.created_at).getTime() > cutoff)
+                .map(m => m.user_id)
+        )
+    }, [messages])
 
     return (
         <div className="h-screen bg-[#F8FAFC] flex flex-col font-sans antialiased overflow-hidden">
@@ -108,20 +122,43 @@ export default function SessionView({
                         </section>
 
                         <section>
-                            <label className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] block mb-4">Core Participants</label>
-                            <div className="space-y-2">
-                                {allProfiles?.map((p) => (
-                                    <div key={p.id} className="flex items-center gap-3 group cursor-pointer hover:bg-white/5 p-2 rounded-xl transition-all border border-transparent hover:border-white/10">
-                                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-black text-[10px] uppercase overflow-hidden">
-                                            {p.avatar_url ? <img src={p.avatar_url} className="w-full h-full object-cover" /> : (p.name?.charAt(0) || 'U')}
+                            <label className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] block mb-4">
+                                Core Participants
+                                <span className="ml-2 text-emerald-500/50 font-medium normal-case tracking-normal">
+                                    ({allProfiles?.length || 0})
+                                </span>
+                            </label>
+                            <div className="space-y-1.5">
+                                {allProfiles?.map((p) => {
+                                    const isYou = p.id === user.id
+                                    const isActive = activeIds.has(p.id) || isYou
+                                    return (
+                                        <div key={p.id} className="flex items-center gap-3 group cursor-default hover:bg-white/5 px-2 py-2 rounded-xl transition-all border border-transparent hover:border-white/8">
+                                            {/* Avatar with active ring */}
+                                            <div className={`relative w-8 h-8 rounded-lg flex items-center justify-center font-black text-[10px] uppercase overflow-hidden shrink-0 ${isActive
+                                                    ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400'
+                                                    : 'bg-white/5 border border-white/10 text-slate-500'
+                                                }`}>
+                                                {p.avatar_url
+                                                    ? <img src={p.avatar_url} className="w-full h-full object-cover" alt={p.name || ''} />
+                                                    : (p.name?.charAt(0) || 'U')
+                                                }
+                                                {/* Status dot */}
+                                                <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#0F172A] ${isActive ? 'bg-emerald-500' : 'bg-slate-600'
+                                                    }`} />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <span className="text-xs font-bold text-slate-300 group-hover:text-white transition-colors block truncate">
+                                                    {p.name || 'Anonymous'}{isYou ? ' (you)' : ''}
+                                                </span>
+                                                <span className={`text-[9px] font-bold uppercase tracking-tight ${isActive ? 'text-emerald-500' : 'text-slate-600'
+                                                    }`}>
+                                                    {isActive ? 'Active' : 'Away'}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-xs font-bold text-slate-300 group-hover:text-white transition-colors">{p.name || 'Anonymous Collaborator'}</span>
-                                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tight">{p.id === user.id ? 'You' : (p.role || 'Contributor')}</span>
-                                        </div>
-                                        {p.id === user.id && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>}
-                                    </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                         </section>
                     </div>
@@ -140,7 +177,7 @@ export default function SessionView({
 
                 {/* Center Pane: Chat Application */}
                 <main className="flex-1 flex flex-col relative bg-white z-10 shadow-xl min-w-0">
-                    <SessionChat sessionId={sessionId} userId={user.id} />
+                    <SessionChat sessionId={sessionId} userId={user.id} participants={allProfiles || []} />
                 </main>
 
                 {/* Right Pane: Session Synthesis */}

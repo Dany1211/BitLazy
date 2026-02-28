@@ -186,20 +186,50 @@ export default async function SessionPage({
                         </section>
 
                         <section>
-                            <label className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] block mb-4">Core Participants</label>
-                            <div className="space-y-2">
-                                {allProfiles?.map((p) => (
-                                    <div key={p.id} className="flex items-center gap-3 group cursor-pointer hover:bg-white/5 p-2 rounded-xl transition-all border border-transparent hover:border-white/10">
-                                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-black text-[10px] uppercase overflow-hidden">
-                                            {p.avatar_url ? <img src={p.avatar_url} className="w-full h-full object-cover" /> : (p.name?.charAt(0) || 'U')}
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-xs font-bold text-slate-300 group-hover:text-white transition-colors">{p.name || 'Anonymous Collaborator'}</span>
-                                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tight">{p.id === user.id ? 'You' : (p.role || 'Contributor')}</span>
-                                        </div>
-                                        {p.id === user.id && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>}
+                            <label className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] block mb-4">
+                                Core Participants
+                                <span className="ml-2 font-medium normal-case tracking-normal text-emerald-500/50">({(allProfiles?.length || 0) + 1})</span>
+                            </label>
+                            <div className="space-y-1.5">
+                                {/* Sage — always present AI participant */}
+                                <div className="flex items-center gap-3 px-2 py-2 rounded-xl border border-transparent">
+                                    <div className="relative w-8 h-8 rounded-lg flex items-center justify-center font-black text-[10px] uppercase shrink-0 bg-indigo-500/15 border border-indigo-500/30 text-indigo-400">
+                                        ✦
+                                        <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#0F172A] bg-indigo-500" />
                                     </div>
-                                ))}
+                                    <div className="flex-1 min-w-0">
+                                        <span className="text-xs font-bold text-slate-300 block truncate">Sage</span>
+                                        <span className="text-[9px] font-bold uppercase tracking-tight text-indigo-400">AI · Always Active</span>
+                                    </div>
+                                </div>
+
+                                {/* Human participants */}
+                                {allProfiles?.map((p) => {
+                                    const isYou = p.id === user.id
+                                    return (
+                                        <div key={p.id} className="flex items-center gap-3 group hover:bg-white/5 px-2 py-2 rounded-xl transition-all border border-transparent hover:border-white/8">
+                                            <div className={`relative w-8 h-8 rounded-lg flex items-center justify-center font-black text-[10px] uppercase overflow-hidden shrink-0 ${isYou
+                                                    ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400'
+                                                    : 'bg-white/5 border border-white/10 text-slate-400'
+                                                }`}>
+                                                {p.avatar_url
+                                                    ? <img src={p.avatar_url} className="w-full h-full object-cover" alt={p.name || ''} />
+                                                    : (p.name?.charAt(0) || 'U')
+                                                }
+                                                <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#0F172A] ${isYou ? 'bg-emerald-500' : 'bg-slate-600'
+                                                    }`} />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <span className="text-xs font-bold text-slate-300 group-hover:text-white transition-colors block truncate">
+                                                    {p.name || 'Anonymous'}{isYou ? ' (you)' : ''}
+                                                </span>
+                                                <span className={`text-[9px] font-bold uppercase tracking-tight ${isYou ? 'text-emerald-500' : 'text-slate-600'}`}>
+                                                    {isYou ? 'Active Now' : 'Participant'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
                             </div>
                         </section>
                     </div>
@@ -207,7 +237,7 @@ export default async function SessionPage({
 
                 {/* Center Pane: Chat Application */}
                 <main className="flex-1 flex flex-col relative bg-white z-10 shadow-xl">
-                    <SessionChat sessionId={id} userId={user.id} />
+                    <SessionChat sessionId={id} userId={user.id} participants={allProfiles || []} />
                 </main>
 
                 {/* Right Pane: Session Synthesis */}
