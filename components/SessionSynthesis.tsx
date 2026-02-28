@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 export interface SessionSummary {
     key_claims: string[]
@@ -14,7 +14,7 @@ export default function SessionSynthesis({ sessionId }: { sessionId: string }) {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
-    const handleGenerate = async () => {
+    const handleGenerate = useCallback(async () => {
         setIsLoading(true)
         setError(null)
         try {
@@ -34,23 +34,19 @@ export default function SessionSynthesis({ sessionId }: { sessionId: string }) {
         } finally {
             setIsLoading(false)
         }
-    }
+    }, [sessionId])
+
+    useEffect(() => {
+        handleGenerate()
+    }, [handleGenerate])
 
     return (
-        <aside className="w-80 bg-slate-50 border-l border-slate-200 hidden xl:flex flex-col shrink-0">
-            <div className="p-6 border-b border-slate-200 bg-white flex justify-between items-center">
+        <aside className="h-full w-full bg-slate-50 flex flex-col overflow-hidden">
+            <div className="p-5 border-b border-slate-200 bg-white flex justify-between items-center shrink-0">
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Synthesis & Notes</h3>
-                {!summary && !isLoading && (
-                    <button
-                        onClick={handleGenerate}
-                        className="text-[10px] bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold uppercase tracking-widest px-3 py-1.5 rounded transition-all"
-                    >
-                        Generate
-                    </button>
-                )}
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
+            <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
                 {isLoading ? (
                     <div className="p-8 flex flex-col items-center justify-center text-center h-full gap-4">
                         <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />

@@ -9,13 +9,15 @@ export default function SessionChat({ sessionId, userId }: { sessionId: string, 
     const { messages, scores, isLoading } = useRealtimeMessages(sessionId)
 
     return (
-        <div className="flex flex-row flex-1 h-full min-h-0 relative">
+        <div className="flex flex-row flex-1 h-full min-h-0 relative overflow-hidden">
             <div className="flex flex-col flex-1 bg-white relative min-w-0 h-full">
                 <MessageList messages={messages} scores={scores} isLoading={isLoading} />
                 <MessageInput sessionId={sessionId} userId={userId} />
             </div>
-            {/* The Metrics Dashboard only shows on large screens */}
-            <MetricsDashboard messages={messages} scores={scores} />
+            {/* Permanent Insights Section on large screens, overlay on small */}
+            <div className="hidden lg:block w-80 shrink-0 border-l border-slate-100 h-full overflow-hidden">
+                <MetricsDashboard messages={messages} scores={scores} />
+            </div>
         </div>
     )
 }
