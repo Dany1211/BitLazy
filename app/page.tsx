@@ -126,7 +126,7 @@ export default async function Home() {
                 <form action={logout}>
                   <button className="text-sm font-medium text-gray-400 hover:text-gray-700 px-3 py-2 transition-colors">Logout</button>
                 </form>
-                <Link href="/profile" className="btn-dark px-4 py-2 rounded-lg text-sm font-semibold">Open App →</Link>
+                <Link href="/home" className="btn-dark px-4 py-2 rounded-lg text-sm font-semibold">Open App →</Link>
               </>
             ) : (
               <>
@@ -162,7 +162,7 @@ export default async function Home() {
 
               <div className="flex flex-wrap gap-3 mb-12">
                 {user ? (
-                  <Link href="/profile" className="btn-dark inline-flex items-center gap-2 px-6 py-3 rounded-xl text-[15px] font-semibold">
+                  <Link href="/home" className="btn-dark inline-flex items-center gap-2 px-6 py-3 rounded-xl text-[15px] font-semibold">
                     Enter Workspace
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
                   </Link>
@@ -368,7 +368,7 @@ export default async function Home() {
           {/* CTA inside dark section */}
           <div className="mt-14 flex flex-col sm:flex-row items-center gap-4">
             {user ? (
-              <Link href="/profile" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-[#0D0D0D] transition-all hover:opacity-90" style={{ background: '#818CF8' }}>
+              <Link href="/home" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-[#0D0D0D] transition-all hover:opacity-90" style={{ background: '#818CF8' }}>
                 Open workspace →
               </Link>
             ) : (
