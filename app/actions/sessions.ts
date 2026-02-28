@@ -2,6 +2,7 @@
 
 import { createServerClientInstance } from '@/utils/supabase';
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 
 export async function createSession(formData: FormData) {
     const supabase = await createServerClientInstance();
@@ -11,9 +12,17 @@ export async function createSession(formData: FormData) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Unauthorized");
 
-    const { error } = await supabase
+    const { data: session, error } = await supabase
         .from('sessions')
-        .insert([{ title, problem_statement, user_id: user.id }]);
+        .insert([{ title, problem_statement }])
+        .select('id')
+        .single();
 
-    if (!error) revalidatePath('/profile');
+    if (error || !session) {
+        console.error('Failed to create session:', error);
+        throw new Error('Failed to create session');
+    }
+
+    revalidatePath('/profile');
+    redirect(`/session/${session.id}`);
 }
