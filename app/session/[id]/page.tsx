@@ -12,9 +12,6 @@ export default async function SessionPage({
     params: Promise<{ id: string }>,
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
-import SessionView from '@/components/SessionView'
-
-export default async function SessionPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
     const resolvedSearchParams = await searchParams
     const inviteCode = resolvedSearchParams?.invite as string | undefined
@@ -217,14 +214,6 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
                 <SessionSynthesis sessionId={id} />
             </div>
         </div>
-        <SessionView
-            session={session}
-            allProfiles={allProfiles}
-            user={user}
-            currentUserProfile={currentUserProfile}
-            userInitials={userInitials}
-            sessionId={id}
-        />
     )
 }
 
