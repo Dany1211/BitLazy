@@ -1,8 +1,8 @@
 import { createServerClientInstance } from '@/utils/supabase'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import SessionChat from '@/components/SessionChat'
 import SessionSynthesis from '@/components/SessionSynthesis'
+import SessionCenterPane from '@/components/SessionCenterPane'
 
 export default async function SessionPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
@@ -146,10 +146,12 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
                     </div>
                 </aside>
 
-                {/* Center Pane: Chat Application */}
-                <main className="flex-1 flex flex-col relative bg-white z-10 shadow-xl">
-                    <SessionChat sessionId={id} userId={user.id} />
-                </main>
+                {/* Center Pane: Chat + Whiteboard */}
+                <SessionCenterPane
+                    sessionId={id}
+                    userId={user.id}
+                    username={currentUserProfile?.name || user.email || 'Anonymous'}
+                />
 
                 {/* Right Pane: Session Synthesis */}
                 <SessionSynthesis sessionId={id} />
