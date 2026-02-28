@@ -1,35 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { GoogleGenAI, Type, Schema } from '@google/genai'
+import OpenAI from 'openai'
 import { createServerClientInstance } from '@/utils/supabase'
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
-
-const summarySchema: Schema = {
-    type: Type.OBJECT,
-    properties: {
-        key_claims: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-            description: 'The absolute most important foundational claims made during the session.',
-        },
-        supporting_evidence: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-            description: 'The strongest evidence provided to back up those claims.',
-        },
-        unresolved_disagreements: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-            description: 'Major points of contention or counterarguments that were not definitively settled.',
-        },
-        open_questions: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-            description: 'The best remaining questions that require further research to solve the problem.',
-        }
-    },
-    required: ['key_claims', 'supporting_evidence', 'unresolved_disagreements', 'open_questions']
-}
+// Initialize Groq Client
+const ai = new OpenAI({
+    baseURL: 'https://api.groq.com/openai/v1',
+    apiKey: process.env.GROQ_API_KEY,
+})
 
 export async function POST(req: NextRequest) {
     try {
@@ -60,28 +37,39 @@ export async function POST(req: NextRequest) {
             .map(m => `[${m.type.toUpperCase()}] ${(m.profiles as unknown as { name: string })?.name || 'User'}: ${m.content}`)
             .join('\n')
 
-        const prompt = `
-      You are an expert cognitive synthesizer. A team has just finished a structured collaboration session.
-      Their goal was to solve: "${sessionInfo?.problem_statement}"
-      
-      Review the transcript and extract a highly rigorous knowledge construction summary.
-      
-      TRANSCRIPT:
-      ${transcript}
-    `
+        const systemInstruction = `
+You are a warm, insightful, and highly conversational AI mentor. A team has just finished a collaborative brainstorming session.
+Their goal was to solve: "${sessionInfo?.problem_statement}"
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: summarySchema,
-                temperature: 0.1,
-            },
+Review the transcript and extract a beautiful, easy-to-understand summary of what the team accomplished. Keep your language highly personalized, friendly, and deeply analytical without sounding like a robot. 
+You MUST respond strictly with a valid JSON object matching this exact structure, with no markdown formatting or extra text:
+
+{
+  "key_claims": ["claim 1", "claim 2", ...], // The absolute best "aha!" moments and core ideas the team came up with. Keep the sentences conversational.
+  "supporting_evidence": ["evidence 1", ...], // The strongest real-world examples or logic they used to back those ideas up.
+  "unresolved_disagreements": ["point 1", ...], // Where the team got stuck or couldn't quite agree, explained empathetically.
+  "open_questions": ["question 1", ...] // The most exciting questions the team should tackle next to keep the momentum going!
+}
+`
+
+        const prompt = `
+TRANSCRIPT:
+${transcript}
+`
+
+        const response = await ai.chat.completions.create({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+                { role: 'system', content: systemInstruction },
+                { role: 'user', content: prompt }
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.1,
+            max_tokens: 1500,
         })
 
-        const resultText = response.text
-        if (!resultText) throw new Error('Failed to generate summary')
+        const resultText = response.choices[0]?.message?.content
+        if (!resultText) throw new Error('Failed to generate summary via DeepSeek')
 
         return NextResponse.json({ summary: JSON.parse(resultText) })
 
