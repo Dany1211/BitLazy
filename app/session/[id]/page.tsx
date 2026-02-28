@@ -3,9 +3,19 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import SessionChat from '@/components/SessionChat'
 import SessionSynthesis from '@/components/SessionSynthesis'
+import ShareSessionModal from '@/components/ShareSessionModal'
 
-export default async function SessionPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function SessionPage({
+    params,
+    searchParams
+}: {
+    params: Promise<{ id: string }>,
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
     const { id } = await params
+    const resolvedSearchParams = await searchParams
+    const inviteCode = resolvedSearchParams?.invite as string | undefined
+
     const supabase = await createServerClientInstance()
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -38,11 +48,42 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
         .select('user_id')
         .eq('session_id', id)
 
-    // Get unique user IDs, defaulting to include the current user
+    // Get unique user IDs, defaulting to include the current user (if they already participated)
     const participantIds = messages
         ? Array.from(new Set(messages.map(m => m.user_id).filter(Boolean)))
         : []
 
+    // Auth Check for Private Sessions
+    if (session.visibility === 'private') {
+        const isParticipant = participantIds.includes(user.id)
+        const isInvited = inviteCode === session.invite_code
+        // Allow the session creator if possible
+        const isCreator = session.created_by === user.id
+
+        // Explicit addition: if the user CREATED the session, they might not be in the participant list yet
+        // For now, if they're not a participant, don't have the link, and aren't the creator, block them.
+        if (!isParticipant && !isInvited && !isCreator) {
+            return (
+                <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-4">
+                    <div className="bg-white p-12 rounded-[2.5rem] shadow-xl shadow-slate-200/50 text-center max-w-md w-full border border-slate-100">
+                        <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                        </div>
+                        <h2 className="text-2xl font-black text-slate-900 mb-2">Private Session</h2>
+                        <p className="text-slate-500 font-medium mb-8">You need an invite link to access this collaborative space.</p>
+                        <Link href="/profile" className="inline-block bg-[#0F172A] hover:bg-slate-800 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg active:scale-95">
+                            Return to Dashboard
+                        </Link>
+                    </div>
+                </div>
+            )
+        }
+    }
+
+    // Since they passed authorization, guarantee the current user is added to participant list 
+    // so their avatar shows up in the Room Header
     if (!participantIds.includes(user.id)) participantIds.push(user.id)
 
     const { data: allProfiles } = await supabase
@@ -74,6 +115,12 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
                 </div>
 
                 <div className="flex items-center gap-6">
+                    <div className="hidden sm:block">
+                        <ShareSessionModal inviteCode={session.invite_code} visibility={session.visibility} />
+                    </div>
+
+                    <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
+
                     {/* Collaborators Avatars */}
                     <div className="hidden sm:flex items-center gap-2">
                         <div className="flex -space-x-2">

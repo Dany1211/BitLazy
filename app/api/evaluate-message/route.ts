@@ -58,7 +58,7 @@ You MUST respond strictly with a valid JSON object matching this exact structure
   "explanation": (string, 1-2 friendly sentences explaining the score, speaking directly to the user by name if possible, e.g., "Great point Dany, but you might want to back that up with some data!"),
   "global_grade": (0-100 integer evaluating overall logic, rigor, and healthy collaboration of the session),
   "live_advice": (string, a single, punchy, and highly encouraging piece of advice for the participants right now, e.g., "You guys are onto something great! Try looking at the problem from the user's perspective next."),
-  "user_grades": { "UserName1": (0-100 integer), "UserName2": (0-100 integer) }
+  "user_grades": { "[EXACT NAME OF USER FROM TRANSCRIPT]": (0-100 integer) } // CRITICAL: ONLY include names that actually appear in the session history. Do NOT invent names.
 }
 `
 

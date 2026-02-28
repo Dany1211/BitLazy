@@ -1,7 +1,7 @@
 import { createServerClientInstance } from '@/utils/supabase'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { createSession } from '@/app/actions/sessions'
+import { createSession, joinSession } from '@/app/actions/sessions'
 
 export default async function ProfilePage() {
     const supabase = await createServerClientInstance()
@@ -15,9 +15,21 @@ export default async function ProfilePage() {
         .eq('id', user.id)
         .single()
 
+    // Get all session IDs where this user has participated
+    const { data: userMessages } = await supabase
+        .from('messages')
+        .select('session_id')
+        .eq('user_id', user.id)
+
+    const userSessionIds = userMessages
+        ? Array.from(new Set(userMessages.map(m => m.session_id)))
+        : []
+
+    // Fetch all sessions that are either PUBLIC, or are PRIVATE but the user is a participant OR the creator
     const { data: sessions } = await supabase
         .from('sessions')
         .select('*')
+        .or(`visibility.eq.public,created_by.eq.${user.id},id.in.(${userSessionIds.length > 0 ? userSessionIds.join(',') : '00000000-0000-0000-0000-000000000000'})`)
         .order('created_at', { ascending: false })
 
     const userInitials = profile?.name?.charAt(0) || user.email?.charAt(0) || '?'
@@ -119,10 +131,54 @@ export default async function ProfilePage() {
                                             className="w-full bg-white border border-slate-200 rounded-lg px-4 py-3 text-sm focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 transition-all outline-none resize-none"
                                         />
                                     </div>
+                                    <div className="space-y-3 pt-2">
+                                        <label className="text-xs font-bold text-slate-500 uppercase ml-1">Session Visibility</label>
+                                        <div className="flex gap-4">
+                                            <label className="flex-1 flex items-center gap-3 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 relative group transition-colors has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
+                                                <input type="radio" name="visibility" value="public" defaultChecked className="w-4 h-4 text-indigo-600 focus:ring-indigo-500" />
+                                                <div>
+                                                    <p className="font-bold text-sm text-slate-800">Public Room</p>
+                                                    <p className="text-xs text-slate-500">Anyone with the link can join the chat.</p>
+                                                </div>
+                                            </label>
+                                            <label className="flex-1 flex items-center gap-3 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 relative group transition-colors has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
+                                                <input type="radio" name="visibility" value="private" className="w-4 h-4 text-indigo-600 focus:ring-indigo-500" />
+                                                <div>
+                                                    <p className="font-bold text-sm text-slate-800">Private Room</p>
+                                                    <p className="text-xs text-slate-500">Only invited users can access the session.</p>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="flex justify-end">
+                                <div className="flex justify-end pt-2">
                                     <button className="bg-[#0F172A] hover:bg-emerald-600 text-white px-8 py-3 rounded-lg font-bold text-sm transition-all shadow-lg shadow-slate-200 hover:shadow-emerald-200 active:scale-95">
                                         Initialize Session
+                                    </button>
+                                </div>
+                            </form>
+                        </section>
+
+                        {/* Section: Join */}
+                        <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mt-12">
+                            <div className="px-8 py-6 border-b border-slate-100 bg-slate-50/50">
+                                <h3 className="text-lg font-bold text-slate-800">Join Existing Session</h3>
+                            </div>
+                            <form action={joinSession} className="p-8 space-y-6">
+                                <div className="grid grid-cols-1 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-slate-500 uppercase ml-1">Invite Code</label>
+                                        <input
+                                            name="invite_code"
+                                            required
+                                            placeholder="Paste the session invite code here"
+                                            className="w-full bg-white border border-slate-200 rounded-lg px-4 py-3 text-sm focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 transition-all outline-none"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex justify-end pt-2">
+                                    <button className="bg-[#0F172A] hover:bg-emerald-600 text-white px-8 py-3 rounded-lg font-bold text-sm transition-all shadow-lg shadow-slate-200 hover:shadow-emerald-200 active:scale-95">
+                                        Join Room
                                     </button>
                                 </div>
                             </form>
@@ -152,9 +208,19 @@ export default async function ProfilePage() {
                                                 </p>
                                             </div>
                                             <div className="mt-6 flex items-center justify-between border-t border-slate-50 pt-4">
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                                                    ID: {session.id.slice(0, 8)}
-                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    {session.visibility === 'private' ? (
+                                                        <span className="flex items-center gap-1 text-[9px] font-black text-rose-500 bg-rose-50 px-2 py-1 rounded uppercase tracking-tighter">
+                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                                            Private
+                                                        </span>
+                                                    ) : (
+                                                        <span className="flex items-center gap-1 text-[9px] font-black text-indigo-500 bg-indigo-50 px-2 py-1 rounded uppercase tracking-tighter">
+                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                            Public
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
                                                     {new Date(session.created_at).toLocaleDateString()}
                                                 </span>

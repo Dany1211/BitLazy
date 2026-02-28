@@ -10,7 +10,14 @@ interface MetricsDashboardProps {
     scores: AIScore[]
 }
 
-export default function MetricsDashboard({ scores }: MetricsDashboardProps) {
+export default function MetricsDashboard({ messages, scores }: MetricsDashboardProps) {
+
+    // Extract a Set of actually participating names to filter out AI hallucinations
+    const validNames = useMemo(() => {
+        if (!messages) return new Set<string>()
+        return new Set(messages.map(m => (m.profiles as { name?: string })?.name).filter(Boolean) as string[])
+    }, [messages])
+
 
     // Get the latest rich evaluation payload
     const latestEval = useMemo(() => {
@@ -127,6 +134,7 @@ export default function MetricsDashboard({ scores }: MetricsDashboardProps) {
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 block pb-2">Participant Logic</span>
                 <div className="space-y-3">
                     {Object.entries(user_grades)
+                        .filter(([name]) => validNames.has(name))
                         .sort(([, a], [, b]) => (b as number) - (a as number)) // Type assertion handled
                         .map(([name, gradeStr]) => {
                             const grade = Number(gradeStr);
