@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { AIScore } from '@/lib/metricsEngine'
 
-export type MessageType = 'claim' | 'evidence' | 'counterargument' | 'question' | 'synthesis'
+export type MessageType = 'claim' | 'evidence' | 'counterargument' | 'question' | 'synthesis' | 'vote_answer'
 
 export interface Message {
     id: string

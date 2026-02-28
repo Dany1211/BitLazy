@@ -245,7 +245,7 @@ export default async function Home() {
                         <span className="text-[11px] font-black text-[#0D0D0D]">Mike</span>
                         <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded" style={{ background: '#FFF1F2', color: '#E11D48' }}>Counter</span>
                       </div>
-                      <p className="text-xs text-gray-600 leading-relaxed bg-white border border-gray-100 rounded-xl rounded-tl-sm px-3.5 py-2.5 shadow-sm">Could also be UX copy — the CTA says 'Verify' but users don't know what they're verifying.</p>
+                      <p className="text-xs text-gray-600 leading-relaxed bg-white border border-gray-100 rounded-xl rounded-tl-sm px-3.5 py-2.5 shadow-sm">Could also be UX copy &mdash; the CTA says &apos;Verify&apos; but users don&apos;t know what they&apos;re verifying.</p>
                     </div>
                   </div>
 
