@@ -49,7 +49,16 @@ export default function SessionChat({
     const answerRevealed = currentVotes >= requiredVotes && requiredVotes > 0
 
     // 6. Is it currently generating? (Optimistic Lock from DB)
-    const isGenerating = messages.some(m => m.content === '#SYNTHESIS_IN_PROGRESS#')
+    // To prevent infinite loading if a DELETE event drops, we ONLY consider generating if
+    // a '#SYNTHESIS_IN_PROGRESS#' exists AND there is NO 'synthesis' AI message after it.
+    const lastSynthesisProgressIndex = messages.map(m => m.content).lastIndexOf('#SYNTHESIS_IN_PROGRESS#')
+    const hasSubsequentMasterAnswer = lastSynthesisProgressIndex !== -1 &&
+        messages.slice(lastSynthesisProgressIndex).some(m => m.is_ai && m.type === 'synthesis')
+
+    const isGenerating = lastSynthesisProgressIndex !== -1 && !hasSubsequentMasterAnswer
+
+    // 7. Override currentVotes to 0 locally if we are generating (so UI resets instantly before WebSocket catches up)
+    const displayVotes = isGenerating ? 0 : currentVotes
 
     // Race-condition safe reveal trigger
     useEffect(() => {
@@ -95,7 +104,7 @@ export default function SessionChat({
     return (
         <div className="flex flex-row flex-1 h-full min-h-0 relative overflow-hidden">
             <div className="flex flex-col flex-1 bg-white relative min-w-0 h-full">
-                <MessageList messages={messages} scores={scores} isLoading={isLoading} />
+                <MessageList messages={messages} scores={scores} isLoading={isLoading} userId={userId} category={category} />
 
                 {/* Voting Bar */}
                 <div className="px-5 pb-2">
@@ -112,12 +121,12 @@ export default function SessionChat({
                         <div className="flex items-center gap-3 w-full sm:w-auto">
                             <div className="flex flex-col items-end flex-1 sm:flex-none">
                                 <span className="text-xs font-bold text-emerald-600">
-                                    {currentVotes} / {requiredVotes} Votes
+                                    {displayVotes} / {requiredVotes} Votes
                                 </span>
                                 <div className="w-full sm:w-24 h-1.5 bg-emerald-200/50 rounded-full mt-1 overflow-hidden">
                                     <div
                                         className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                                        style={{ width: `${Math.min(100, (currentVotes / requiredVotes) * 100)}%` }}
+                                        style={{ width: `${Math.min(100, (displayVotes / requiredVotes) * 100)}%` }}
                                     />
                                 </div>
                             </div>
