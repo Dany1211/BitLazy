@@ -7,13 +7,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PU
 const supabase = createClient(supabaseUrl, supabaseKey)
 
 async function check() {
-    const { data, error } = await supabase.from('messages').insert({
-        id: crypto.randomUUID(),
-        session_id: '00000000-0000-0000-0000-000000000000', // invalid UUID but works for type checking
-        user_id: '00000000-0000-0000-0000-000000000000',
-        content: 'test',
-        type: 'vote_answer'
-    })
-    console.log("INSERT RESPONSE:", { data, error })
+    const { data, error } = await supabase.from('sessions').select('*').eq('id', '856977e2-9c72-4ee4-ba5f-2afad020cd9b').single()
+    console.log("SESSION:", data)
 }
 check()
