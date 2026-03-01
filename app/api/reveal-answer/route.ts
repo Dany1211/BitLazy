@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
         // 1. Fetch Session Context
         const { data: sessionInfo } = await supabase
             .from('sessions')
-            .select('*')
+            .select('*, category')
             .eq('id', sessionId)
             .single()
 
@@ -45,10 +45,19 @@ export async function POST(req: NextRequest) {
             .map(m => `[${m.type.toUpperCase()}] ${(m.profiles as unknown as { name: string })?.name || 'User'}: ${m.content}`)
             .join('\n')
 
+        const sessionCategory = sessionInfo?.category || 'General';
+
         // 3. Prompt Sage to generate the beautiful master answer
         const systemInstruction = `
 You are Sage, a brilliant and highly visual AI coach. The team has been working on understanding: "${sessionInfo.title} - ${sessionInfo.problem_statement}".
 They have officially voted to reveal the final, master answer.
+The current session category is: "${sessionCategory}".
+
+CATEGORY-SPECIFIC SYNTHESIS RULES:
+- If Category is "Debate": The master answer must objectively summarize both sides, highlight the strongest Empirical Evidence from the chat, and declare a logical winner or propose a specific compromise based strictly on the transcript.
+- If Category is "Learning": The master answer should read like an incredible textbook chapter tailored to their reading level, breaking down the core concepts from the ground up to ensure foundational mastery.
+- If Category is "DSA": The master answer must include beautiful, runnable code blocks in Python or TypeScript, along with a table comparing Big-O time and space complexity tradeoffs of their approach vs the optimal approach.
+- If Category is "General": Provide a structured, highly actionable summary of the brainstorm, organizing their chaotic ideas into a clean, prioritized list.
 
 Your goal is to provide a STUNNING, Highly Structured, Step-by-Step explanation of the topic or problem they were discussing.
 You MUST format this beautifully using Markdown. 

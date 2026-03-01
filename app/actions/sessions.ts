@@ -9,13 +9,14 @@ export async function createSession(formData: FormData) {
     const title = formData.get('title') as string;
     const problem_statement = formData.get('problem_statement') as string;
     const visibility = (formData.get('visibility') as string) || 'public';
+    const category = (formData.get('category') as string) || 'General';
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Unauthorized");
 
     const { data: session, error } = await supabase
         .from('sessions')
-        .insert([{ title, problem_statement, visibility, created_by: user.id }])
+        .insert([{ title, problem_statement, visibility, category, created_by: user.id }])
         .select('id')
         .single();
 

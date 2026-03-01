@@ -39,6 +39,7 @@ export default async function HomePage() {
             id: 'learning',
             label: 'Learning Space',
             tag: 'Study',
+            category: 'Learning',
             description: 'Structured sessions for digging into concepts, papers, or topics as a group. Evidence-backed discussion.',
             color: '#6366F1',
             lightBg: '#EEF2FF',
@@ -54,6 +55,7 @@ export default async function HomePage() {
             id: 'gd',
             label: 'Group Discussion',
             tag: 'Debate',
+            category: 'Debate',
             description: 'Open-ended collaborative reasoning rooms. Post claims, counter-arguments, and let AI score the logic.',
             color: '#7C3AED',
             lightBg: '#F5F3FF',
@@ -69,6 +71,7 @@ export default async function HomePage() {
             id: 'sandbox',
             label: 'Sandbox',
             tag: 'Explore',
+            category: 'General',
             description: 'Freeform workspace for brainstorming, ideation, or early-stage thinking without fixed structure.',
             color: '#0891B2',
             lightBg: '#ECFEFF',
@@ -160,6 +163,16 @@ export default async function HomePage() {
                                     placeholder="Problem statement or goal..."
                                     className="w-full bg-white/5 border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none resize-none"
                                 />
+                                <select
+                                    name="category"
+                                    required
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none appearance-none cursor-pointer"
+                                >
+                                    <option value="General" className="bg-[#0D0D0D]">General Brainstorming</option>
+                                    <option value="Learning" className="bg-[#0D0D0D]">Learning (5th-12th Grade)</option>
+                                    <option value="Debate" className="bg-[#0D0D0D]">Debate & Disagreement</option>
+                                    <option value="DSA" className="bg-[#0D0D0D]">Data Structures & Algorithms</option>
+                                </select>
                                 <div className="flex items-center gap-3">
                                     <div className="flex gap-2 flex-1">
                                         <label className="flex items-center gap-2 flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 cursor-pointer hover:bg-white/8 has-[:checked]:border-indigo-500 transition-all">
@@ -264,6 +277,7 @@ export default async function HomePage() {
                                         className="w-full bg-gray-50 border border-gray-100 rounded-lg px-3 py-2.5 text-xs text-[#0D0D0D] placeholder-gray-400 transition-all outline-none resize-none"
                                     />
                                     <input type="hidden" name="visibility" value="public" />
+                                    <input type="hidden" name="category" value={space.category} />
                                     <button
                                         className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold text-white transition-all hover:opacity-90"
                                         style={{ background: space.color }}
