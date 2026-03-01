@@ -6,6 +6,12 @@ import { useEffect, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { DotLottiePlayer } from '@dotlottie/react-player'
+
+interface TypingUser {
+    id: string
+    name: string
+}
 
 const badgeColors: Record<Message['type'], string> = {
     claim: 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300 shadow-sm',
@@ -16,7 +22,19 @@ const badgeColors: Record<Message['type'], string> = {
     vote_answer: 'bg-emerald-100 text-emerald-800 border-emerald-300 shadow-sm', // specialized vote message
 }
 
-export default function MessageList({ messages, scores, isLoading }: { messages: Message[], scores: AIScore[], isLoading: boolean }) {
+export default function MessageList({
+    messages,
+    scores,
+    isLoading,
+    typingUsers = [],
+    isGenerating = false
+}: {
+    messages: Message[],
+    scores: AIScore[],
+    isLoading: boolean,
+    typingUsers?: TypingUser[],
+    isGenerating?: boolean
+}) {
     const endOfMessagesRef = useRef<HTMLDivElement>(null)
     const [expandedScores, setExpandedScores] = useState<Record<string, boolean>>({})
 
@@ -51,6 +69,12 @@ export default function MessageList({ messages, scores, isLoading }: { messages:
         )
     }
 
+    const typingUsersToDisplay = typingUsers.length > 0 ? typingUsers : (isGenerating ? [] : []) // No-op placeholder
+
+    // DEBUG: Also show current user typing if they are alone (for verification)
+    // Actually, let's keep it strictly WhatsApp style but add a log to MessageList
+    console.log('[MessageList] Rendered with typingUsers:', typingUsers.length, 'isGenerating:', isGenerating)
+
     return (
         <div className="flex-1 overflow-y-auto px-4 md:px-12 py-10 space-y-8 scroll-smooth custom-scrollbar relative z-10 w-full max-w-4xl mx-auto">
             {messages.map((message, idx) => {
@@ -59,17 +83,22 @@ export default function MessageList({ messages, scores, isLoading }: { messages:
                 const isSage = message.is_ai || profile?.name === 'Sage'
 
                 // If it's a vote message, render it differently
-                if (message.type === 'vote_answer' || message.content === '#VOTE_REVEAL#') {
-                    return (
-                        <div key={message.id} className="flex justify-center my-4">
-                            <div className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2 rounded-full text-xs font-bold shadow-sm animate-[fadeIn_0.5s_ease-out] flex items-center gap-2">
-                                <span className="bg-emerald-200 text-emerald-800 w-5 h-5 rounded-full flex items-center justify-center text-[10px] uppercase">
-                                    {(profile?.name || 'U').charAt(0)}
-                                </span>
-                                {profile?.name || 'User'} voted to reveal the answer.
+                // Hide system markers
+                if (message.type === 'system' || message.content === '#SYNTHESIS_IN_PROGRESS#' || message.content === '#VOTE_REVEAL#' || message.type === 'vote_answer') {
+                    if (message.content === '#SYNTHESIS_IN_PROGRESS#') return null;
+                    if (message.type === 'vote_answer' || message.content === '#VOTE_REVEAL#') {
+                        return (
+                            <div key={message.id} className="flex justify-center my-4">
+                                <div className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2 rounded-full text-xs font-bold shadow-sm animate-[fadeIn_0.5s_ease-out] flex items-center gap-2">
+                                    <span className="bg-emerald-200 text-emerald-800 w-5 h-5 rounded-full flex items-center justify-center text-[10px] uppercase">
+                                        {(profile?.name || 'U').charAt(0)}
+                                    </span>
+                                    {profile?.name || 'User'} voted to reveal the answer.
+                                </div>
                             </div>
-                        </div>
-                    )
+                        )
+                    }
+                    return null;
                 }
 
                 const isExpanded = expandedScores[message.id] || false
@@ -218,6 +247,48 @@ export default function MessageList({ messages, scores, isLoading }: { messages:
                     </div>
                 )
             })}
+            {/* Thinking Indicator (Sage) */}
+            {isGenerating && (
+                <div className="flex flex-col items-center my-8 animate-[fadeIn_0.5s_ease-out]">
+                    <div className="flex items-center gap-2 mb-2 pl-1 justify-center">
+                        <span className="font-black text-xs text-purple-500 uppercase tracking-[0.2em]">
+                            ✨ Sage is thinking...
+                        </span>
+                    </div>
+                    <div className="relative w-[200px] h-[200px] flex items-center justify-center">
+                        <DotLottiePlayer
+                            src="/animation/Meditating-Giraffe.lottie"
+                            autoplay
+                            loop
+                            style={{ width: '180px', height: '180px' }}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* Typing Indicator (Users) */}
+            {typingUsers.length > 0 && (
+                <div className="flex items-start gap-2 mb-4 animate-[fadeIn_0.3s_ease-out] ml-4">
+                    <div className="flex flex-col gap-1">
+                        <div className="bg-slate-100/80 backdrop-blur-sm border border-slate-200 px-4 py-2.5 rounded-2xl flex items-center gap-3">
+                            <div className="flex gap-1">
+                                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
+                            </div>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none">
+                                {typingUsers.length === 1
+                                    ? `${typingUsers[0].name} is typing...`
+                                    : typingUsers.length === 2
+                                        ? `${typingUsers[0].name} and ${typingUsers[1].name} are typing...`
+                                        : `${typingUsers.length} people are typing...`
+                                }
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div ref={endOfMessagesRef} className="h-4" />
         </div>
     )

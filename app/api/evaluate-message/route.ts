@@ -153,6 +153,18 @@ Target Message to Evaluate:
         // 5. If Trigerred, generate Sage's response
         if (interventionTrigger.intervene && allMessages && allMessages.length > 0) {
             console.log(`🗣️ [SAGE] Wakeup Triggered! Reason: ${interventionTrigger.reason}`)
+
+            // --- OPTIMISTIC LOCK / THINKING INDICATOR ---
+            const markerId = crypto.randomUUID()
+            await supabase.from('messages').insert({
+                id: markerId,
+                session_id: targetMessage.session_id,
+                user_id: null,
+                content: '#SYNTHESIS_IN_PROGRESS#',
+                type: 'system',
+                is_ai: true
+            })
+
             const { data: sessionInfo } = await supabase
                 .from('sessions')
                 .select('problem_statement')
@@ -160,11 +172,21 @@ Target Message to Evaluate:
                 .single()
 
             // Format full history for Sage
+            // ... (rest of the history formatting) ...
             const fullHistory = allMessages
                 .map(m => `[${m.type.toUpperCase()}] ${(m.profiles as unknown as { name: string })?.name || 'User'}: ${m.content}`)
                 .join('\n')
 
             const systemInstruction = `
+            // ... (rest of system instruction) ...
+            You are Sage, a brilliant, intellectually humble, and highly encouraging AI coach sitting in on a team's collaborative session.
+            // ...
+`
+
+            const sageResponse = await ai.chat.completions.create({
+                model: 'llama-3.1-8b-instant', // Fast smaller model for quick Sage responses
+                messages: [{
+                    role: 'system', content: `
 You are Sage, a brilliant, intellectually humble, and highly encouraging AI coach sitting in on a team's collaborative session.
 The participants are trying to master this topic: "${sessionInfo?.problem_statement || 'Unknown'}"
 
@@ -177,11 +199,7 @@ RULES:
 ---
 SESSION HISTORY SO FAR:
 ${fullHistory}
-`
-
-            const sageResponse = await ai.chat.completions.create({
-                model: 'llama-3.1-8b-instant', // Fast smaller model for quick Sage responses
-                messages: [{ role: 'system', content: systemInstruction }],
+` }],
                 temperature: 0.7, // Need creativity here
                 max_tokens: 300,
             })
@@ -190,20 +208,22 @@ ${fullHistory}
             const sageText = sageResponse.choices[0]?.message?.content
             if (sageText) {
                 const generatedSageId = crypto.randomUUID()
-                const { error: sageError } = await supabase.from('messages').insert({
+                await supabase.from('messages').insert({
                     id: generatedSageId,
                     session_id: targetMessage.session_id,
                     user_id: null,
                     content: sageText.trim(),
-                    type: 'question', // Sage almost always asks questions
-                    is_ai: true // Using the user's schema flag
+                    type: 'question',
+                    is_ai: true
                 })
-                if (sageError) {
-                    console.error('❌ Failed to insert Sage message:', sageError)
-                } else {
-                    console.log(`✅ Sage message inserted successfully with ID: ${generatedSageId}`)
-                }
             }
+
+            // REMOVE marker after at least 3 seconds to show animation
+            await new Promise(resolve => setTimeout(resolve, 3000))
+            await supabase
+                .from('messages')
+                .delete()
+                .eq('id', markerId)
         }
 
         return NextResponse.json({ success: true, score: insertedScore, intervened: interventionTrigger.intervene })

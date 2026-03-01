@@ -114,7 +114,8 @@ CRITICAL FORMATTING RULES:
             return NextResponse.json({ error: 'Failed to save answer' }, { status: 500 })
         }
 
-        // 5. CLEAR ALL VOTES so the session is ready for exactly what they asked: "reset the voting after every time answer is revealed"
+        // 5. CLEAR ALL VOTES after a 3s delay to show the "Thinking" animation
+        await new Promise(resolve => setTimeout(resolve, 3000))
         const { error: deleteError } = await supabase
             .from('messages')
             .delete()

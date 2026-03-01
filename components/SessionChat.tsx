@@ -26,32 +26,23 @@ export default function SessionChat({
     category?: string
 }) {
     const { messages, scores, isLoading } = useRealtimeMessages(sessionId)
-    const { onlineUsers } = usePresence(sessionId, userId)
+    const { onlineUsers, typingUsers, updatePresence } = usePresence(sessionId, userId, participants.find(p => p.id === userId)?.name || 'User')
     const [isVoting, setIsVoting] = useState(false)
     const revealTriggeredRef = useRef(false)
 
     // Calculate voting status
-    // 1. How many distinct people have voted so far?
     const voteMessages = messages.filter(m => m.type === 'vote_answer' || m.content === '#VOTE_REVEAL#')
     const uniqueVoters = new Set(voteMessages.map(m => m.user_id))
     const currentVotes = uniqueVoters.size
-
-    // 2. Has the current user voted?
     const hasVoted = uniqueVoters.has(userId)
-
-    // 3. How many people are active right now?
     const activeCount = onlineUsers.size
-
-    // 4. Threshold: 2/3 of active participants (rounded up)
     const requiredVotes = Math.max(1, Math.ceil(activeCount * (2 / 3)))
-
-    // 5. Are we revealing?
     const answerRevealed = currentVotes >= requiredVotes && requiredVotes > 0
 
-    // 6. Is it currently generating? (Optimistic Lock from DB)
+    // Is it currently generating? (Optimistic Lock from DB)
     const isGenerating = messages.some(m => m.content === '#SYNTHESIS_IN_PROGRESS#')
+    console.log('[SessionChat] isGenerating:', isGenerating)
 
-    // Race-condition safe reveal trigger
     useEffect(() => {
         if (!revealTriggeredRef.current && answerRevealed && !isGenerating) {
             revealTriggeredRef.current = true
@@ -63,7 +54,6 @@ export default function SessionChat({
         }
     }, [answerRevealed, sessionId, isGenerating])
 
-    // Reset the trigger when the votes are successfully cleared by the backend
     useEffect(() => {
         if (currentVotes === 0 && !isGenerating) {
             revealTriggeredRef.current = false
@@ -74,28 +64,76 @@ export default function SessionChat({
         if (hasVoted || isVoting || answerRevealed) return
         setIsVoting(true)
         const generatedId = crypto.randomUUID()
-
         const { error } = await supabase.from('messages').insert({
             id: generatedId,
             session_id: sessionId,
             user_id: userId,
             content: '#VOTE_REVEAL#',
-            type: 'question', // Use existing ENUM to avoid database schema rejection
+            type: 'question',
         })
-
         if (error) {
             console.error("VOTE INSERT ERROR:", error)
             alert("Failed to vote. Please try again.")
         }
-
-        // Wait for the UI to catch up with realtime before releasing loading state
         setTimeout(() => setIsVoting(false), 500)
     }
 
     return (
         <div className="flex flex-row flex-1 h-full min-h-0 relative overflow-hidden">
             <div className="flex flex-col flex-1 bg-white relative min-w-0 h-full">
-                <MessageList messages={messages} scores={scores} isLoading={isLoading} />
+                {/* Debug Panel Overlay */}
+                <div className="absolute top-4 right-4 z-[100] bg-black/80 backdrop-blur-md text-white p-3 rounded-xl text-[10px] font-mono shadow-xl border border-white/20 pointer-events-none">
+                    <p className="font-bold text-pink-400 mb-1">D E B U G  P A N E L</p>
+                    <div className="space-y-1">
+                        <div className="flex justify-between gap-4">
+                            <span>Generating:</span>
+                            <span className={isGenerating ? 'text-emerald-400' : 'text-slate-500'}>{isGenerating ? 'YES' : 'NO'}</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                            <span>Typing Users:</span>
+                            <span className="text-amber-400">{typingUsers.length}</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                            <span>Online State:</span>
+                            <span className="text-blue-400">{onlineUsers.size}</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                            <span>User Name:</span>
+                            <span className="text-slate-300">{participants.find(p => p.id === userId)?.name || 'User'}</span>
+                        </div>
+                        <div className="pt-2 border-t border-white/10">
+                            <button
+                                onClick={() => {
+                                    // Manual trigger for testing UI
+                                    const markerId = crypto.randomUUID()
+                                    supabase.from('messages').insert({
+                                        id: markerId,
+                                        session_id: sessionId,
+                                        user_id: null,
+                                        content: '#SYNTHESIS_IN_PROGRESS#',
+                                        type: 'system',
+                                        is_ai: true
+                                    }).then(() => {
+                                        setTimeout(() => {
+                                            supabase.from('messages').delete().eq('id', markerId)
+                                        }, 3000)
+                                    })
+                                }}
+                                className="w-full bg-pink-600 hover:bg-pink-500 text-white rounded px-2 py-1 text-[9px] font-bold pointer-events-auto active:scale-95 transition-all"
+                            >
+                                Force 3s Thinking
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <MessageList
+                    messages={messages}
+                    scores={scores}
+                    isLoading={isLoading}
+                    typingUsers={typingUsers}
+                    isGenerating={isGenerating}
+                />
 
                 {/* Voting Bar */}
                 <div className="px-5 pb-2">
@@ -132,7 +170,13 @@ export default function SessionChat({
                     </div>
                 </div>
 
-                <MessageInput sessionId={sessionId} userId={userId} participants={participants} category={category} />
+                <MessageInput
+                    sessionId={sessionId}
+                    userId={userId}
+                    participants={participants}
+                    category={category}
+                    updatePresence={updatePresence}
+                />
             </div>
             {/* Permanent Insights Section on large screens */}
             <div className="hidden lg:block w-80 shrink-0 border-l border-slate-100 h-full overflow-hidden">

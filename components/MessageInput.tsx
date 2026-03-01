@@ -15,11 +15,14 @@ interface Props {
     userId: string
     participants?: Participant[]
     category?: string
+    updatePresence: (data: Partial<{ isTyping: boolean }>) => Promise<void>
 }
 
-export default function MessageInput({ sessionId, userId, participants = [], category = 'General' }: Props) {
+export default function MessageInput({ sessionId, userId, participants = [], category = 'General', updatePresence }: Props) {
     const [content, setContent] = useState('')
     const [isSending, setIsSending] = useState(false)
+    const [localIsTyping, setLocalIsTyping] = useState(false)
+    const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
     // @mention state
     const [mentionQuery, setMentionQuery] = useState<string | null>(null)  // null = not in mention mode
@@ -54,6 +57,20 @@ export default function MessageInput({ sessionId, userId, participants = [], cat
         const caret = e.target.selectionStart ?? val.length
         setContent(val)
         adjustHeight()
+
+        // Typing indicator logic
+        if (!localIsTyping) {
+            console.log('Typing started, calling updatePresence({ isTyping: true })')
+            setLocalIsTyping(true)
+            updatePresence({ isTyping: true })
+        }
+
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+        typingTimeoutRef.current = setTimeout(() => {
+            console.log('Typing stopped due to timeout, calling updatePresence({ isTyping: false })')
+            setLocalIsTyping(false)
+            updatePresence({ isTyping: false })
+        }, 2000)
 
         // Find the most recent '@' before the caret
         const textBeforeCaret = val.slice(0, caret)
@@ -137,6 +154,10 @@ export default function MessageInput({ sessionId, userId, participants = [], cat
         })
         if (!error) {
             setContent('')
+            setLocalIsTyping(false)
+            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+            updatePresence({ isTyping: false })
+
             if (textareaRef.current) {
                 textareaRef.current.style.height = 'auto'
             }

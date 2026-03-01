@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 
-export function usePresence(sessionId: string, userId: string) {
-    const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set())
+export function usePresence(sessionId: string, userId: string, userName?: string) {
+    const [onlineUsers, setOnlineUsers] = useState<Map<string, { id: string, name: string, isTyping: boolean }>>(new Map())
+    const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
     useEffect(() => {
         let isMounted = true
 
-        // Create a dedicated presence channel per session
         const room = supabase.channel(`presence-session-${sessionId}`, {
             config: {
                 presence: {
@@ -16,50 +16,61 @@ export function usePresence(sessionId: string, userId: string) {
             },
         })
 
+        channelRef.current = room
+
         room
             .on('presence', { event: 'sync' }, () => {
                 if (!isMounted) return
                 const newState = room.presenceState()
 
-                const activeIds = new Set<string>()
+                const activeMap = new Map<string, { id: string, name: string, isTyping: boolean }>()
                 for (const state of Object.values(newState)) {
-                    for (const presence of (state as unknown as Array<{ user_id: string }>)) {
+                    for (const presence of (state as any)) {
                         if (presence.user_id) {
-                            activeIds.add(presence.user_id)
+                            activeMap.set(presence.user_id, {
+                                id: presence.user_id,
+                                name: presence.name || 'Anonymous',
+                                isTyping: !!presence.isTyping
+                            })
                         }
                     }
                 }
 
-                setOnlineUsers(activeIds)
-                console.log('[Presence] Sync: Online users:', Array.from(activeIds))
-            })
-            .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-                console.log('[Presence] Join:', key, newPresences)
-            })
-            .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-                console.log('[Presence] Leave:', key, leftPresences)
+                setOnlineUsers(activeMap)
+                console.log('[Presence] Active Map updated:', Array.from(activeMap.entries()))
             })
             .subscribe(async (status) => {
-                console.log('[Presence] Subscribe status:', status)
-                if (status === 'SUBSCRIBED') {
-                    // Register (track) them in the presence channel
-                    const trackRes = await room.track({
+                if (status === 'SUBSCRIBED' && isMounted) {
+                    await room.track({
                         user_id: userId,
+                        name: userName || 'Anonymous',
+                        isTyping: false,
                         online_at: new Date().toISOString(),
                     })
-                    console.log('[Presence] Track response:', trackRes)
                 }
             })
 
         return () => {
             isMounted = false
+            channelRef.current = null
             supabase.removeChannel(room)
         }
-    }, [sessionId, userId])
+    }, [sessionId, userId, userName])
 
-    // Ensure the current user is ALWAYS in the set on first render before sync happens
-    const usersToReturn = new Set(onlineUsers)
-    usersToReturn.add(userId)
+    const updatePresence = async (data: Partial<{ isTyping: boolean }>) => {
+        console.log('[Presence] updatePresence called with:', data)
+        if (channelRef.current) {
+            await channelRef.current.track({
+                user_id: userId,
+                name: userName || 'Anonymous',
+                online_at: new Date().toISOString(),
+                ...data
+            })
+        }
+    }
 
-    return { onlineUsers: usersToReturn }
+    const typingUsers = Array.from(onlineUsers.values())
+        .filter(u => u.isTyping && u.id !== userId)
+
+    return { onlineUsers, typingUsers, updatePresence }
 }
