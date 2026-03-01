@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import Link from 'next/link'
 import SessionChat from '@/components/SessionChat'
 import SessionSynthesis from '@/components/SessionSynthesis'
+import WhiteboardCanvas from '@/components/WhiteboardCanvas'
 import ShareSessionModal from '@/components/ShareSessionModal'
 import { usePresence } from '@/hooks/usePresence'
 
@@ -40,6 +41,7 @@ export default function SessionView({
     sessionId
 }: SessionViewProps) {
     const [showSynthesis, setShowSynthesis] = useState(false)
+    const [showWhiteboard, setShowWhiteboard] = useState(false)
     const [showSidebar, setShowSidebar] = useState(true)
     const [mounted, setMounted] = useState(false)
 
@@ -77,7 +79,7 @@ export default function SessionView({
 
                 <div className="flex items-center gap-3 sm:gap-6">
                     <div className="hidden sm:block">
-                        <ShareSessionModal inviteCode={session.invite_code} visibility={session.visibility} />
+                        <ShareSessionModal inviteCode={session.invite_code || ''} visibility={(session.visibility as "public" | "private") || 'private'} />
                     </div>
 
                     <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
@@ -108,13 +110,26 @@ export default function SessionView({
                     <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
 
                     {/* Perspective Toggles */}
-                    <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner">
+                    <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner gap-1">
                         <button
-                            onClick={() => setShowSynthesis(!showSynthesis)}
+                            onClick={() => {
+                                setShowWhiteboard(!showWhiteboard);
+                                if (!showWhiteboard) setShowSynthesis(false);
+                            }}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${showWhiteboard ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                            <span className="hidden lg:inline">Whiteboard</span>
+                        </button>
+                        <button
+                            onClick={() => {
+                                setShowSynthesis(!showSynthesis);
+                                if (!showSynthesis) setShowWhiteboard(false);
+                            }}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${showSynthesis ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                         >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                            <span className="hidden sm:inline">Synthesis</span>
+                            <span className="hidden lg:inline">Synthesis</span>
                         </button>
                     </div>
 
@@ -232,10 +247,16 @@ export default function SessionView({
                     ></div>
                 )}
 
-                {/* Center Pane: Chat Application */}
-                <main className="flex-1 flex flex-col relative bg-white z-10 shadow-xl min-w-0">
-                    <SessionChat sessionId={sessionId} userId={user.id} participants={allProfiles || []} category={session.category} />
-                </main>
+                {/* Center Pane: Chat Application or Whiteboard */}
+                {showWhiteboard ? (
+                    <main className="flex-1 flex flex-col relative bg-white z-10 shadow-xl min-w-0">
+                        <WhiteboardCanvas roomId={sessionId} username={currentUserProfile?.name || 'Explorer'} />
+                    </main>
+                ) : (
+                    <main className="flex-1 flex flex-col relative bg-white z-10 shadow-xl min-w-0">
+                        <SessionChat sessionId={sessionId} userId={user.id} participants={allProfiles || []} category={session.category} />
+                    </main>
+                )}
 
                 {/* Right Pane: Session Synthesis */}
                 {showSynthesis && (
