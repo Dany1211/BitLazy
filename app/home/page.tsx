@@ -8,7 +8,7 @@ import { logout } from '@/app/actions/auth'
 const getCategoryStyles = (category: string) => {
     switch (category?.toLowerCase()) {
         case 'general':
-            return { label: 'Sandbox', bg: 'bg-cyan-500/10', text: 'text-cyan-500', border: 'border-cyan-500/20' };
+            return { label: 'General', bg: 'bg-cyan-500/10', text: 'text-cyan-500', border: 'border-cyan-500/20' };
         case 'learning':
             return { label: 'Learning Space', bg: 'bg-indigo-500/10', text: 'text-indigo-500', border: 'border-indigo-500/20' };
         case 'debate':
@@ -50,8 +50,8 @@ export default async function HomePage() {
 
     const spaces = [
         {
-            id: 'sandbox',
-            label: 'Sandbox',
+            id: 'General',
+            label: 'General',
             tag: 'Explore',
             category: 'General',
             description: 'Freeform workspace for brainstorming, ideation, or early-stage thinking.',
@@ -201,7 +201,7 @@ export default async function HomePage() {
                                 </div>
                                 <h3 className="text-lg font-bold text-[#0D0D0D] mb-2">{space.label}</h3>
                                 <p className="text-xs text-gray-500 leading-relaxed font-medium mb-6 flex-grow">{space.description}</p>
-                                
+
                                 <form action={createSession} className="space-y-3 mt-auto">
                                     <input
                                         name="title"
@@ -216,7 +216,7 @@ export default async function HomePage() {
                                         placeholder={space.statementPlaceholder}
                                         className="w-full bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 text-xs transition-all outline-none resize-none"
                                     />
-                                    
+
                                     {/* Visibility Toggle within Workspace card */}
                                     <div className="flex gap-2 pt-1">
                                         <label className="flex items-center gap-1.5 flex-1 bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5 cursor-pointer hover:bg-gray-100 has-[:checked]:border-indigo-500 transition-all">
@@ -254,7 +254,7 @@ export default async function HomePage() {
                         {sessions && sessions.length > 0 ? (
                             sessions.map((session) => {
                                 const cat = getCategoryStyles(session.category);
-                                
+
                                 return (
                                     <Link
                                         key={session.id}
