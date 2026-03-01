@@ -15,7 +15,15 @@ interface Profile {
 }
 
 interface SessionViewProps {
-    session: { title: string, problem_statement: string, created_at: string, visibility?: string, invite_code?: string, id?: string }
+    session: {
+        title: string
+        problem_statement: string
+        category?: string
+        created_at: string
+        visibility?: string
+        invite_code?: string
+        id?: string
+    }
     allProfiles: Profile[] | null
     user: { id: string }
     currentUserProfile: Profile | null | undefined
@@ -144,6 +152,10 @@ export default function SessionView({
                         <section>
                             <label className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] block mb-4">Session Specs</label>
                             <div className="space-y-4">
+                                <div className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/10">
+                                    <span className="text-[11px] font-bold text-slate-400">Category</span>
+                                    <span className="text-[11px] font-black text-indigo-400 uppercase tracking-widest">{session.category || 'General'}</span>
+                                </div>
                                 <div className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/10">
                                     <span className="text-[11px] font-bold text-slate-400">Created</span>
                                     <span className="text-[11px] font-black text-slate-200 uppercase">{mounted ? new Date(session.created_at).toLocaleDateString() : ''}</span>

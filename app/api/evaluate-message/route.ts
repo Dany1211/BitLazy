@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
         // 1. Fetch the target message and its session context
         const { data: targetMessage } = await supabase
             .from('messages')
-            .select('*, profiles(name)')
+            .select('*, profiles(name), sessions(category, title)')
             .eq('id', messageId)
             .single()
 
@@ -45,20 +45,33 @@ export async function POST(req: NextRequest) {
             .map(m => `[${m.type.toUpperCase()}] ${(m.profiles as unknown as { name: string })?.name || 'User'}: ${m.content}`)
             .join('\n')
 
+        const sessionCategory = (targetMessage?.sessions as Record<string, unknown>)?.category || 'General';
+        const sessionTitle = (targetMessage?.sessions as Record<string, unknown>)?.title || 'Discussion';
+
         // 2. Call DeepSeek via OpenRouter (Strict JSON)
         const systemInstruction = `
 You are a brilliant, warm, and highly empathetic cognitive coach monitoring a team's collaboration session.
+The current session category is: "${sessionCategory}".
+The topic is: "${sessionTitle}".
+
+CATEGORY-SPECIFIC GRADING RUBRICS:
+- If Category is "Debate": Be incredibly rigorous. Punish logical fallacies, demand hard empirical data over personal opinions, and dock points for echo chambers.
+- If Category is "Learning": Be exceptionally encouraging. Reward curiosity, foundational questions, and clearly articulated explanations even if they aren't groundbreaking.
+- If Category is "DSA": Look for code efficiency, algorithmic time complexity discussion (Big-O), and architectural tradeoffs.
+- If Category is "General": Reward creativity, outside-the-box thinking, and lateral problem solving.
+
 Your goal is to evaluate the FINAL user message and the overall session, but you MUST speak to the users like a friendly, encouraging mentor. Use their names, be conversational, and make your analytical feedback incredibly easy to understand.
+Make sure your grading heavily reflects the requirements of the "${sessionCategory}" category!
 
 You MUST respond strictly with a valid JSON object matching this exact structure, with no markdown formatting or extra text:
 {
-  "semantic_depth": (1-5 integer representing cognitive depth),
-  "logical_gap": (boolean, true if there is a glaring logical fallacy or assumption),
-  "justification_type": (string, 1-3 conversational words: e.g., "Personal Experience", "Solid Data", "Just Guessing", "Good Theory"),
-  "explanation": (string, 1-2 friendly sentences explaining the score, speaking directly to the user by name if possible, e.g., "Great point Dany, but you might want to back that up with some data!"),
-  "global_grade": (0-100 integer evaluating overall logic, rigor, and healthy collaboration of the session),
-  "live_advice": (string, a single, punchy, and highly encouraging piece of advice for the participants right now, e.g., "You guys are onto something great! Try looking at the problem from the user's perspective next."),
-  "user_grades": { "[EXACT NAME OF USER FROM TRANSCRIPT]": (0-100 integer) } // CRITICAL: ONLY include names that actually appear in the session history. Do NOT invent names.
+  "semantic_depth": (1-5 integer representing cognitive depth according to the exact ${sessionCategory} rubric),
+  "logical_gap": (boolean, true if there is a glaring logical fallacy or assumption given the ${sessionCategory} rules),
+  "justification_type": (string, 1-3 conversational words: e.g., "Personal Experience", "Solid Data", "Curious Question", "Algorithm Tradeoff"),
+  "explanation": (string, 1-2 friendly sentences explaining the score, speaking directly to the user by name if possible, e.g., "Great point Dany, but in a Debate, you need to back that up with some data!"),
+  "global_grade": (0-100 integer evaluating overall logic, rigor, and healthy collaboration of the session based on the ${sessionCategory} standards),
+  "live_advice": (string, a single, punchy, and highly encouraging piece of advice tailored to help them excel in this ${sessionCategory} session.),
+  "user_grades": { "[User Name]": (0-100 integer representing their individual contribution health) } // CRITICAL: ONLY include names that actually appear in the session history. Do NOT invent names.
 }
 `
 
