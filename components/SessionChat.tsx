@@ -58,6 +58,13 @@ export default function SessionChat({
         }
     }, [answerRevealed, sessionId])
 
+    // Reset the trigger when the votes are successfully cleared by the backend
+    useEffect(() => {
+        if (currentVotes === 0) {
+            revealTriggeredRef.current = false
+        }
+    }, [currentVotes])
+
     const handleVote = async () => {
         if (hasVoted || isVoting || answerRevealed) return
         setIsVoting(true)

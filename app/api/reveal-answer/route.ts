@@ -31,10 +31,13 @@ export async function POST(req: NextRequest) {
             .eq('session_id', sessionId)
             .order('created_at', { ascending: true })
 
-        // Check for idempotency: if there's already a synthesis generated after votes, don't generate again.
+        // Check for idempotency ONLY IF there are no new votes 
+        // We allow multiple reveals if the team voted again later for a new topic
+        const hasActiveVotes = (allMessages || []).some(m => m.content === '#VOTE_REVEAL#')
         const alreadyRevealed = (allMessages || []).some(m => m.is_ai && m.type === 'synthesis')
-        if (alreadyRevealed) {
-            return NextResponse.json({ success: true, message: 'Already revealed' })
+
+        if (alreadyRevealed && !hasActiveVotes) {
+            return NextResponse.json({ success: true, message: 'Already revealed recently' })
         }
 
         const fullHistory = (allMessages || [])
@@ -88,6 +91,18 @@ CRITICAL FORMATTING RULES:
         if (insertError) {
             console.error('Failed to insert the master answer:', insertError)
             return NextResponse.json({ error: 'Failed to save answer' }, { status: 500 })
+        }
+
+        // 5. CLEAR ALL VOTES so the session is ready for exactly what they asked: "reset the voting after every time answer is revealed"
+        const { error: deleteError } = await supabase
+            .from('messages')
+            .delete()
+            .eq('session_id', sessionId)
+            .eq('content', '#VOTE_REVEAL#')
+
+        if (deleteError) {
+            console.error('Failed to clear votes after reveal:', deleteError)
+            // Non-fatal, we still return success for the generated answer.
         }
 
         return NextResponse.json({ success: true, messageId: generatedSageId })
