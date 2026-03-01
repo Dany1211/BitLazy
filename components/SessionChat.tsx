@@ -18,10 +18,12 @@ export default function SessionChat({
     sessionId,
     userId,
     participants = [],
+    category = 'General',
 }: {
     sessionId: string
     userId: string
     participants?: Profile[]
+    category?: string
 }) {
     const { messages, scores, isLoading } = useRealtimeMessages(sessionId)
     const { onlineUsers } = usePresence(sessionId, userId)
@@ -127,7 +129,7 @@ export default function SessionChat({
                     </div>
                 </div>
 
-                <MessageInput sessionId={sessionId} userId={userId} participants={participants} />
+                <MessageInput sessionId={sessionId} userId={userId} participants={participants} category={category} />
             </div>
             {/* Permanent Insights Section on large screens */}
             <div className="hidden lg:block w-80 shrink-0 border-l border-slate-100 h-full overflow-hidden">

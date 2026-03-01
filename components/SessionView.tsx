@@ -234,7 +234,7 @@ export default function SessionView({
 
                 {/* Center Pane: Chat Application */}
                 <main className="flex-1 flex flex-col relative bg-white z-10 shadow-xl min-w-0">
-                    <SessionChat sessionId={sessionId} userId={user.id} participants={allProfiles || []} />
+                    <SessionChat sessionId={sessionId} userId={user.id} participants={allProfiles || []} category={session.category} />
                 </main>
 
                 {/* Right Pane: Session Synthesis */}

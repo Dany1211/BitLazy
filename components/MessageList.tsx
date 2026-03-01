@@ -110,8 +110,16 @@ export default function MessageList({ messages, scores, isLoading }: { messages:
 
                             {!isSage && (
                                 <div className="mb-3">
-                                    <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-white/50 border border-black/5 text-black/60 shadow-sm backdrop-blur-sm">
-                                        {message.type}
+                                    <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border shadow-sm backdrop-blur-sm ${['claim', 'concept', 'algorithm', 'idea'].includes(message.type) ? 'bg-indigo-100 text-indigo-700 border-indigo-200' :
+                                        ['evidence', 'analogy', 'optimization', 'feedback'].includes(message.type) ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                            ['counter', 'edge_case', 'blocker'].includes(message.type) ? 'bg-rose-100 text-rose-700 border-rose-200' :
+                                                ['concession', 'question', 'complexity'].includes(message.type) ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                                                    ['synthesis', 'summary'].includes(message.type) ? 'bg-purple-100 text-purple-700 border-purple-200' :
+                                                        ['example', 'action_item'].includes(message.type) ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                                            message.type === 'code_block' ? 'bg-slate-200 text-slate-700 border-slate-300' :
+                                                                'bg-white/50 text-black/60 border-black/5'
+                                        }`}>
+                                        {message.type.replace('_', ' ')}
                                     </span>
                                 </div>
                             )}
@@ -141,10 +149,19 @@ export default function MessageList({ messages, scores, isLoading }: { messages:
                                             ),
                                             th: ({ node, ...props }: any) => <th className="px-4 py-3 bg-slate-50 text-left text-xs font-black text-slate-500 uppercase tracking-widest border-b border-slate-200" {...props} />,
                                             td: ({ node, ...props }: any) => <td className="px-4 py-3 text-sm text-slate-700 border-b border-slate-100 last:border-0" {...props} />,
-                                            code: ({ node, inline, ...props }: any) =>
-                                                inline
-                                                    ? <code className="bg-slate-100 text-pink-600 px-1.5 py-0.5 rounded-md text-[13px] font-mono font-bold" {...props} />
-                                                    : <div className="bg-[#0F172A] rounded-xl p-4 my-4 overflow-x-auto shadow-inner w-full max-w-full"><code className="text-emerald-400 text-[13px] font-mono block whitespace-pre" {...props} /></div>
+                                            pre: ({ node, ...props }: any) => (
+                                                <div className="bg-[#0F172A] rounded-xl p-4 my-4 overflow-x-auto shadow-inner w-full max-w-full">
+                                                    <pre className="text-emerald-400 text-[13px] font-mono block whitespace-pre" {...props} />
+                                                </div>
+                                            ),
+                                            code: ({ node, className, children, ...props }: any) => {
+                                                const match = /language-(\w+)/.exec(className || '');
+                                                const isBlock = match || String(children).includes('\n');
+                                                if (isBlock) {
+                                                    return <code className={className} {...props}>{children}</code>;
+                                                }
+                                                return <code className="bg-slate-100 text-pink-600 px-1.5 py-0.5 rounded-md text-[13px] font-mono font-bold" {...props}>{children}</code>;
+                                            }
                                         }}
                                     /* eslint-enable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
                                     >

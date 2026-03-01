@@ -14,11 +14,11 @@ interface Props {
     sessionId: string
     userId: string
     participants?: Participant[]
+    category?: string
 }
 
-export default function MessageInput({ sessionId, userId, participants = [] }: Props) {
+export default function MessageInput({ sessionId, userId, participants = [], category = 'General' }: Props) {
     const [content, setContent] = useState('')
-    const [type, setType] = useState<MessageType>('claim')
     const [isSending, setIsSending] = useState(false)
 
     // @mention state
@@ -160,13 +160,45 @@ export default function MessageInput({ sessionId, userId, participants = [] }: P
         return () => document.removeEventListener('mousedown', handler)
     }, [])
 
-    const typeConfig: Record<MessageType, { label: string; color: string; dot: string }> = {
-        claim: { label: 'Claim', color: 'bg-indigo-500', dot: 'bg-indigo-400' },
-        evidence: { label: 'Evidence', color: 'bg-emerald-600', dot: 'bg-emerald-400' },
-        counterargument: { label: 'Counter', color: 'bg-rose-600', dot: 'bg-rose-400' },
-        question: { label: 'Question', color: 'bg-amber-500', dot: 'bg-amber-400' },
-        synthesis: { label: 'Synthesis', color: 'bg-purple-600', dot: 'bg-purple-400' },
+    const getTypeConfig = (cat: string): Record<string, { label: string; color: string; dot: string }> => {
+        const normalizedCat = cat.toLowerCase()
+        if (normalizedCat === 'debate') {
+            return {
+                claim: { label: 'Claim', color: 'bg-indigo-500', dot: 'bg-indigo-400' },
+                evidence: { label: 'Evidence', color: 'bg-emerald-600', dot: 'bg-emerald-400' },
+                counter: { label: 'Counter', color: 'bg-rose-600', dot: 'bg-rose-400' },
+                concession: { label: 'Concession', color: 'bg-amber-500', dot: 'bg-amber-400' },
+                synthesis: { label: 'Synthesis', color: 'bg-purple-600', dot: 'bg-purple-400' },
+            }
+        } else if (normalizedCat === 'learning') {
+            return {
+                concept: { label: 'Concept', color: 'bg-indigo-500', dot: 'bg-indigo-400' },
+                question: { label: 'Question', color: 'bg-amber-500', dot: 'bg-amber-400' },
+                analogy: { label: 'Analogy', color: 'bg-emerald-600', dot: 'bg-emerald-400' },
+                example: { label: 'Example', color: 'bg-blue-500', dot: 'bg-blue-400' },
+                summary: { label: 'Summary', color: 'bg-purple-600', dot: 'bg-purple-400' },
+            }
+        } else if (normalizedCat === 'dsa') {
+            return {
+                algorithm: { label: 'Algorithm', color: 'bg-indigo-500', dot: 'bg-indigo-400' },
+                complexity: { label: 'Complexity', color: 'bg-amber-500', dot: 'bg-amber-400' },
+                edge_case: { label: 'Edge Case', color: 'bg-rose-600', dot: 'bg-rose-400' },
+                optimization: { label: 'Optimization', color: 'bg-emerald-600', dot: 'bg-emerald-400' },
+                code_block: { label: 'Code Block', color: 'bg-slate-700', dot: 'bg-slate-500' },
+            }
+        }
+        // General
+        return {
+            idea: { label: 'Idea', color: 'bg-indigo-500', dot: 'bg-indigo-400' },
+            feedback: { label: 'Feedback', color: 'bg-emerald-600', dot: 'bg-emerald-400' },
+            blocker: { label: 'Blocker', color: 'bg-rose-600', dot: 'bg-rose-400' },
+            question: { label: 'Question', color: 'bg-amber-500', dot: 'bg-amber-400' },
+            action_item: { label: 'Action Item', color: 'bg-blue-500', dot: 'bg-blue-400' },
+        }
     }
+
+    const typeConfig = getTypeConfig(category)
+    const [type, setType] = useState<MessageType>(Object.keys(typeConfig)[0])
 
     return (
         <div className="px-5 pb-6 pt-2 relative">
@@ -194,8 +226,8 @@ export default function MessageInput({ sessionId, userId, participants = [] }: P
                                     className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${i === mentionIndex ? 'bg-slate-50' : 'hover:bg-slate-50'}`}
                                 >
                                     <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-black text-[11px] uppercase overflow-hidden shrink-0 ${isSage
-                                            ? 'bg-indigo-100 text-indigo-600'
-                                            : i === mentionIndex ? 'bg-[#0F172A] text-white' : 'bg-slate-200 text-slate-500'
+                                        ? 'bg-indigo-100 text-indigo-600'
+                                        : i === mentionIndex ? 'bg-[#0F172A] text-white' : 'bg-slate-200 text-slate-500'
                                         }`}>
                                         {isSage ? '✦' : (
                                             p.avatar_url
