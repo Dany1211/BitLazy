@@ -36,12 +36,24 @@ export async function POST(req: NextRequest) {
         const hasActiveVotes = (allMessages || []).some(m => m.content === '#VOTE_REVEAL#')
         const alreadyRevealed = (allMessages || []).some(m => m.is_ai && m.type === 'synthesis')
 
-        if (alreadyRevealed && !hasActiveVotes) {
-            return NextResponse.json({ success: true, message: 'Already revealed recently' })
+        if ((alreadyRevealed && !hasActiveVotes) || (allMessages || []).some(m => m.content === '#SYNTHESIS_IN_PROGRESS#')) {
+            return NextResponse.json({ success: true, message: 'Already revealed recently or in progress' })
         }
 
+        // --- OPTIMISTIC LOCK ---
+        // Immediately insert a marker to tell other concurrent requests that we are handling this
+        await supabase.from('messages').insert({
+            id: crypto.randomUUID(),
+            session_id: sessionId,
+            user_id: null,
+            content: '#SYNTHESIS_IN_PROGRESS#',
+            type: 'system',
+            is_ai: true
+        })
+        // -----------------------
+
         const fullHistory = (allMessages || [])
-            .filter(m => !m.is_ai && m.type !== 'vote_answer' && m.content !== '#VOTE_REVEAL#')
+            .filter(m => !m.is_ai && m.type !== 'vote_answer' && m.content !== '#VOTE_REVEAL#' && m.content !== '#SYNTHESIS_IN_PROGRESS#')
             .map(m => `[${m.type.toUpperCase()}] ${(m.profiles as unknown as { name: string })?.name || 'User'}: ${m.content}`)
             .join('\n')
 
@@ -107,10 +119,10 @@ CRITICAL FORMATTING RULES:
             .from('messages')
             .delete()
             .eq('session_id', sessionId)
-            .eq('content', '#VOTE_REVEAL#')
+            .in('content', ['#VOTE_REVEAL#', '#SYNTHESIS_IN_PROGRESS#'])
 
         if (deleteError) {
-            console.error('Failed to clear votes after reveal:', deleteError)
+            console.error('Failed to clear votes and lock after reveal:', deleteError)
             // Non-fatal, we still return success for the generated answer.
         }
 
