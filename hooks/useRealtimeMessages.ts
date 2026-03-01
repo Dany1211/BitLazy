@@ -86,6 +86,37 @@ export function useRealtimeMessages(sessionId: string) {
                     })
                 }
             )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'messages',
+                    filter: `session_id=eq.${sessionId}`,
+                },
+                (payload) => {
+                    console.log('Realtime received message update:', payload)
+                    setMessages((prev) =>
+                        prev.map((m) =>
+                            m.id === payload.new.id
+                                ? { ...m, ...payload.new, profiles: m.profiles } as Message
+                                : m
+                        )
+                    )
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'DELETE',
+                    schema: 'public',
+                    table: 'messages',
+                },
+                (payload) => {
+                    console.log('Realtime received message delete:', payload)
+                    setMessages((prev) => prev.filter((m) => m.id !== payload.old.id))
+                }
+            )
             .subscribe((status) => {
                 console.log('Messages channel status:', status)
             })
@@ -112,6 +143,18 @@ export function useRealtimeMessages(sessionId: string) {
                         }
                         return currentMessages
                     })
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'DELETE',
+                    schema: 'public',
+                    table: 'ai_scores',
+                },
+                (payload) => {
+                    console.log('Realtime received score delete:', payload)
+                    setScores((prev) => prev.filter((s) => s.id !== payload.old.id))
                 }
             )
             .subscribe((status) => {

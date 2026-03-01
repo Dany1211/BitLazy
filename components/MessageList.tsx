@@ -6,6 +6,8 @@ import { useEffect, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { getTypeConfig } from '@/utils/messageTypes'
+import { supabase } from '@/lib/supabaseClient'
 
 const badgeColors: Record<Message['type'], string> = {
     claim: 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300 shadow-sm',
@@ -16,9 +18,42 @@ const badgeColors: Record<Message['type'], string> = {
     vote_answer: 'bg-emerald-100 text-emerald-800 border-emerald-300 shadow-sm', // specialized vote message
 }
 
-export default function MessageList({ messages, scores, isLoading }: { messages: Message[], scores: AIScore[], isLoading: boolean }) {
+export default function MessageList({ messages, scores, isLoading, userId, category = 'General' }: { messages: Message[], scores: AIScore[], isLoading: boolean, userId?: string, category?: string }) {
     const endOfMessagesRef = useRef<HTMLDivElement>(null)
     const [expandedScores, setExpandedScores] = useState<Record<string, boolean>>({})
+
+    const [editModeId, setEditModeId] = useState<string | null>(null)
+    const [editContent, setEditContent] = useState('')
+    const [editType, setEditType] = useState<string>('')
+    const [isSaving, setIsSaving] = useState(false)
+
+    const handleEditSave = async (messageId: string) => {
+        if (!editContent.trim() || isSaving) return
+        setIsSaving(true)
+
+        // Optimistic update handled by Realtime hook usually, but we need to push to DB
+        const { error } = await supabase
+            .from('messages')
+            .update({ content: editContent.trim(), type: editType })
+            .eq('id', messageId)
+
+        if (!error) {
+            setEditModeId(null)
+            // Trigger AI re-evaluation in the background
+            fetch('/api/evaluate-message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messageId, isEdit: true }) // signal it's an edit to old handle score delete!
+            }).catch(() => { })
+        }
+        setIsSaving(false)
+    }
+
+    const startEditing = (m: Message) => {
+        setEditModeId(m.id)
+        setEditContent(m.content)
+        setEditType(m.type)
+    }
 
     const toggleScore = (messageId: string) => {
         setExpandedScores(prev => ({
@@ -97,9 +132,16 @@ export default function MessageList({ messages, scores, isLoading }: { messages:
                                 {isSage ? '✨ Sage Facilitator' : (profile?.name || 'Creator')}
                             </span>
                             {!isSage && (
-                                <span className="text-[10px] font-bold text-slate-400">
-                                    {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold text-slate-400">
+                                        {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                    {message.user_id === userId && (
+                                        <button onClick={() => startEditing(message)} className="text-[10px] text-slate-400 hover:text-indigo-500 font-medium transition-colors hover:underline">
+                                            Edit
+                                        </button>
+                                    )}
+                                </div>
                             )}
                         </div>
 
@@ -124,54 +166,83 @@ export default function MessageList({ messages, scores, isLoading }: { messages:
                                 </div>
                             )}
 
-                            {isSage ? (
-                                <div className="text-left w-full text-[15px] leading-relaxed">
-                                    <ReactMarkdown
-                                        remarkPlugins={[remarkGfm]}
-                                        /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
-                                        components={{
-                                            h1: ({ node, ...props }: any) => <h1 className="text-2xl font-black mt-6 mb-4 text-[#0F172A] flex items-center gap-2" {...props} />,
-                                            h2: ({ node, ...props }: any) => <h2 className="text-xl font-bold mt-5 mb-3 text-slate-800" {...props} />,
-                                            h3: ({ node, ...props }: any) => <h3 className="text-lg font-bold mt-4 mb-2 text-indigo-900" {...props} />,
-                                            p: ({ node, ...props }: any) => <p className="mb-4 text-slate-700 last:mb-0" {...props} />,
-                                            ul: ({ node, ...props }: any) => <ul className="list-disc pl-6 mb-4 space-y-2 text-slate-700 marker:text-indigo-400" {...props} />,
-                                            ol: ({ node, ...props }: any) => <ol className="list-decimal pl-6 mb-4 space-y-2 text-slate-700 marker:text-emerald-500 font-medium" {...props} />,
-                                            li: ({ node, ...props }: any) => <li className="" {...props} />,
-                                            strong: ({ node, ...props }: any) => <strong className="font-black text-slate-900 bg-emerald-500/10 px-1 rounded" {...props} />,
-                                            em: ({ node, ...props }: any) => <em className="italic text-slate-600" {...props} />,
-                                            blockquote: ({ node, ...props }: any) => (
-                                                <blockquote className="border-l-4 border-indigo-400 pl-4 py-3 pr-4 my-6 bg-gradient-to-r from-indigo-50/80 to-transparent rounded-r-xl italic text-slate-700 shadow-sm" {...props} />
-                                            ),
-                                            table: ({ node, ...props }: any) => (
-                                                <div className="overflow-hidden rounded-xl border border-slate-200 shadow-sm my-6">
-                                                    <table className="min-w-full divide-y divide-slate-200" {...props} />
-                                                </div>
-                                            ),
-                                            th: ({ node, ...props }: any) => <th className="px-4 py-3 bg-slate-50 text-left text-xs font-black text-slate-500 uppercase tracking-widest border-b border-slate-200" {...props} />,
-                                            td: ({ node, ...props }: any) => <td className="px-4 py-3 text-sm text-slate-700 border-b border-slate-100 last:border-0" {...props} />,
-                                            pre: ({ node, ...props }: any) => (
-                                                <div className="bg-[#0F172A] rounded-xl p-4 my-4 overflow-x-auto shadow-inner w-full max-w-full">
-                                                    <pre className="text-emerald-400 text-[13px] font-mono block whitespace-pre" {...props} />
-                                                </div>
-                                            ),
-                                            code: ({ node, className, children, ...props }: any) => {
-                                                const match = /language-(\w+)/.exec(className || '');
-                                                const isBlock = match || String(children).includes('\n');
-                                                if (isBlock) {
-                                                    return <code className={className} {...props}>{children}</code>;
-                                                }
-                                                return <code className="bg-slate-100 text-pink-600 px-1.5 py-0.5 rounded-md text-[13px] font-mono font-bold" {...props}>{children}</code>;
-                                            }
-                                        }}
-                                    /* eslint-enable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
+                            {editModeId === message.id ? (
+                                <div className="flex flex-col gap-3 w-full">
+                                    <select
+                                        value={editType}
+                                        onChange={(e) => setEditType(e.target.value)}
+                                        className="text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 outline-none focus:border-indigo-300 w-fit"
                                     >
-                                        {message.content}
-                                    </ReactMarkdown>
+                                        {Object.entries(getTypeConfig(category)).map(([key, config]) => (
+                                            <option key={key} value={key}>{config.label}</option>
+                                        ))}
+                                    </select>
+                                    <textarea
+                                        value={editContent}
+                                        onChange={(e) => setEditContent(e.target.value)}
+                                        className="w-full text-[15px] leading-relaxed text-slate-800 bg-white border border-slate-200 rounded-xl p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 min-h-[80px] resize-y custom-scrollbar"
+                                    />
+                                    <div className="flex items-center justify-end gap-2 mt-1">
+                                        <button onClick={() => setEditModeId(null)} className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
+                                            Cancel
+                                        </button>
+                                        <button onClick={() => handleEditSave(message.id)} disabled={isSaving || !editContent.trim()} className="px-4 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-300 rounded-lg transition-colors shadow-sm">
+                                            {isSaving ? 'Saving...' : 'Save'}
+                                        </button>
+                                    </div>
                                 </div>
                             ) : (
-                                <p className="whitespace-pre-wrap leading-relaxed text-slate-800 text-[15px]">
-                                    {message.content}
-                                </p>
+                                <>
+                                    {isSage ? (
+                                        <div className="text-left w-full text-[15px] leading-relaxed">
+                                            <ReactMarkdown
+                                                remarkPlugins={[remarkGfm]}
+                                                /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
+                                                components={{
+                                                    h1: ({ node, ...props }: any) => <h1 className="text-2xl font-black mt-6 mb-4 text-[#0F172A] flex items-center gap-2" {...props} />,
+                                                    h2: ({ node, ...props }: any) => <h2 className="text-xl font-bold mt-5 mb-3 text-slate-800" {...props} />,
+                                                    h3: ({ node, ...props }: any) => <h3 className="text-lg font-bold mt-4 mb-2 text-indigo-900" {...props} />,
+                                                    p: ({ node, ...props }: any) => <p className="mb-4 text-slate-700 last:mb-0" {...props} />,
+                                                    ul: ({ node, ...props }: any) => <ul className="list-disc pl-6 mb-4 space-y-2 text-slate-700 marker:text-indigo-400" {...props} />,
+                                                    ol: ({ node, ...props }: any) => <ol className="list-decimal pl-6 mb-4 space-y-2 text-slate-700 marker:text-emerald-500 font-medium" {...props} />,
+                                                    li: ({ node, ...props }: any) => <li className="" {...props} />,
+                                                    strong: ({ node, ...props }: any) => <strong className="font-black text-slate-900 bg-emerald-500/10 px-1 rounded" {...props} />,
+                                                    em: ({ node, ...props }: any) => <em className="italic text-slate-600" {...props} />,
+                                                    blockquote: ({ node, ...props }: any) => (
+                                                        <blockquote className="border-l-4 border-indigo-400 pl-4 py-3 pr-4 my-6 bg-gradient-to-r from-indigo-50/80 to-transparent rounded-r-xl italic text-slate-700 shadow-sm" {...props} />
+                                                    ),
+                                                    table: ({ node, ...props }: any) => (
+                                                        <div className="overflow-hidden rounded-xl border border-slate-200 shadow-sm my-6">
+                                                            <table className="min-w-full divide-y divide-slate-200" {...props} />
+                                                        </div>
+                                                    ),
+                                                    th: ({ node, ...props }: any) => <th className="px-4 py-3 bg-slate-50 text-left text-xs font-black text-slate-500 uppercase tracking-widest border-b border-slate-200" {...props} />,
+                                                    td: ({ node, ...props }: any) => <td className="px-4 py-3 text-sm text-slate-700 border-b border-slate-100 last:border-0" {...props} />,
+                                                    pre: ({ node, ...props }: any) => (
+                                                        <div className="bg-[#0F172A] rounded-xl p-4 my-4 overflow-x-auto shadow-inner w-full max-w-full">
+                                                            <pre className="text-emerald-400 text-[13px] font-mono block whitespace-pre" {...props} />
+                                                        </div>
+                                                    ),
+                                                    code: ({ node, className, children, ...props }: any) => {
+                                                        const match = /language-(\w+)/.exec(className || '');
+                                                        const isBlock = match || String(children).includes('\n');
+                                                        if (isBlock) {
+                                                            return <code className={className} {...props}>{children}</code>;
+                                                        }
+                                                        return <code className="bg-slate-100 text-pink-600 px-1.5 py-0.5 rounded-md text-[13px] font-mono font-bold" {...props}>{children}</code>;
+                                                    }
+                                                }}
+                                            /* eslint-enable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
+                                            >
+                                                {message.content}
+                                            </ReactMarkdown>
+                                        </div>
+                                    ) : (
+                                        <p className="whitespace-pre-wrap leading-relaxed text-slate-800 text-[15px]">
+                                            {message.content}
+                                        </p>
+                                    )}
+                                </>
                             )}
 
                             {/* Playful Evaluator Tag - HIDDEN BY DEFAULT */}

@@ -34,10 +34,9 @@ export async function POST(req: NextRequest) {
         // Check for idempotency ONLY IF there are no new votes 
         // We allow multiple reveals if the team voted again later for a new topic
         const hasActiveVotes = (allMessages || []).some(m => m.content === '#VOTE_REVEAL#')
-        const alreadyRevealed = (allMessages || []).some(m => m.is_ai && m.type === 'synthesis')
 
-        if ((alreadyRevealed && !hasActiveVotes) || (allMessages || []).some(m => m.content === '#SYNTHESIS_IN_PROGRESS#')) {
-            return NextResponse.json({ success: true, message: 'Already revealed recently or in progress' })
+        if (!hasActiveVotes || (allMessages || []).some(m => m.content === '#SYNTHESIS_IN_PROGRESS#')) {
+            return NextResponse.json({ success: true, message: 'No active votes, or generation already in progress.' })
         }
 
         // --- OPTIMISTIC LOCK ---
@@ -50,6 +49,13 @@ export async function POST(req: NextRequest) {
             type: 'system',
             is_ai: true
         })
+
+        // INSTANT UI RESET: Delete all votes from the DB right now so real-time clients instantly clear their voting progress bars
+        await supabase
+            .from('messages')
+            .delete()
+            .eq('session_id', sessionId)
+            .eq('content', '#VOTE_REVEAL#')
         // -----------------------
 
         const fullHistory = (allMessages || [])
@@ -114,15 +120,15 @@ CRITICAL FORMATTING RULES:
             return NextResponse.json({ error: 'Failed to save answer' }, { status: 500 })
         }
 
-        // 5. CLEAR ALL VOTES so the session is ready for exactly what they asked: "reset the voting after every time answer is revealed"
+        // 5. UNLOCK: Clear the generating state so they can vote again in the future
         const { error: deleteError } = await supabase
             .from('messages')
             .delete()
             .eq('session_id', sessionId)
-            .in('content', ['#VOTE_REVEAL#', '#SYNTHESIS_IN_PROGRESS#'])
+            .eq('content', '#SYNTHESIS_IN_PROGRESS#')
 
         if (deleteError) {
-            console.error('Failed to clear votes and lock after reveal:', deleteError)
+            console.error('Failed to clear generation lock after reveal:', deleteError)
             // Non-fatal, we still return success for the generated answer.
         }
 

@@ -15,7 +15,7 @@ const SAGE_ID = '00000000-0000-4000-8000-000000000000'
 export async function POST(req: NextRequest) {
     console.log('\n🔵 [AI EVALUATOR] Received request to evaluate message (DeepSeek)...')
     try {
-        const { messageId } = await req.json()
+        const { messageId, isEdit } = await req.json()
         if (!messageId) return NextResponse.json({ error: 'Message ID required' }, { status: 400 })
 
         const supabase = await createServerClientInstance()
@@ -105,7 +105,17 @@ Target Message to Evaluate:
             user_grades: scoreData.user_grades
         }
 
-        // 3. Insert Score into Database
+        // 3. Delete existing score if this is an edit
+        if (isEdit) {
+            const { error: deleteError } = await supabase
+                .from('ai_scores')
+                .delete()
+                .eq('message_id', messageId)
+
+            if (deleteError) console.error('Failed to delete old score on edit:', deleteError)
+        }
+
+        // 4. Insert Score into Database
         const { data: insertedScore, error: scoreError } = await supabase
             .from('ai_scores')
             .insert({
