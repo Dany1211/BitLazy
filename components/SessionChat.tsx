@@ -48,9 +48,12 @@ export default function SessionChat({
     // 5. Are we revealing?
     const answerRevealed = currentVotes >= requiredVotes && requiredVotes > 0
 
+    // 6. Is it currently generating? (Optimistic Lock from DB)
+    const isGenerating = messages.some(m => m.content === '#SYNTHESIS_IN_PROGRESS#')
+
     // Race-condition safe reveal trigger
     useEffect(() => {
-        if (!revealTriggeredRef.current && answerRevealed) {
+        if (!revealTriggeredRef.current && answerRevealed && !isGenerating) {
             revealTriggeredRef.current = true
             fetch('/api/reveal-answer', {
                 method: 'POST',
@@ -58,14 +61,14 @@ export default function SessionChat({
                 body: JSON.stringify({ sessionId })
             }).catch(err => console.error("Failed to trigger answer reveal:", err))
         }
-    }, [answerRevealed, sessionId])
+    }, [answerRevealed, sessionId, isGenerating])
 
     // Reset the trigger when the votes are successfully cleared by the backend
     useEffect(() => {
-        if (currentVotes === 0) {
+        if (currentVotes === 0 && !isGenerating) {
             revealTriggeredRef.current = false
         }
-    }, [currentVotes])
+    }, [currentVotes, isGenerating])
 
     const handleVote = async () => {
         if (hasVoted || isVoting || answerRevealed) return
@@ -120,10 +123,10 @@ export default function SessionChat({
                             </div>
                             <button
                                 onClick={handleVote}
-                                disabled={hasVoted || answerRevealed || isVoting}
+                                disabled={hasVoted || answerRevealed || isVoting || isGenerating}
                                 className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-200 text-white text-xs font-bold uppercase tracking-widest rounded-xl transition-all shadow-md hover:shadow-lg disabled:shadow-none whitespace-nowrap active:scale-95 flex items-center gap-2"
                             >
-                                {isVoting ? 'Voting...' : (hasVoted ? 'Voted' : 'Vote to Show')}
+                                {isGenerating ? 'Generating...' : isVoting ? 'Voting...' : (hasVoted ? 'Voted' : 'Vote to Show')}
                             </button>
                         </div>
                     </div>

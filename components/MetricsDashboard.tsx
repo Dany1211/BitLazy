@@ -54,10 +54,15 @@ export default function MetricsDashboard({ messages, scores }: MetricsDashboardP
 
     if (!latestEval) {
         return (
-            <div className="bg-slate-50 border-l border-slate-200 p-6 shrink-0 w-80 hidden 2xl:flex flex-col items-center justify-center h-full">
-                <div className="w-12 h-12 border-4 border-slate-200 border-t-indigo-500 rounded-full animate-spin mb-4"></div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Awaiting AI Evaluation...</p>
-                <p className="text-[10px] text-slate-400 text-center mt-2 px-4">Start contributing to the session to generate the AI Logic Grade.</p>
+            <div className="bg-slate-50 border-l border-slate-200 p-8 shrink-0 w-80 hidden 2xl:flex flex-col items-center justify-center h-full">
+                <div className="w-40 h-40 mb-6 rounded-full overflow-hidden shadow-xl border-4 border-white">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/images/sage-avatar.png" alt="Sage the AI Assistant" className="w-full h-full object-cover" />
+                </div>
+                <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest text-center mb-2">Welcome to the Session!</h3>
+                <p className="text-xs text-slate-500 text-center leading-relaxed">
+                    Start contributing to the session to generate the AI Logic Grade.
+                </p>
             </div>
         )
     }
