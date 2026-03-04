@@ -21,6 +21,8 @@ interface Props {
 export default function MessageInput({ sessionId, userId, participants = [], category = 'General' }: Props) {
     const [content, setContent] = useState('')
     const [isSending, setIsSending] = useState(false)
+    const [isUploading, setIsUploading] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
 
     // @mention state
     const [mentionQuery, setMentionQuery] = useState<string | null>(null)  // null = not in mention mode
@@ -124,9 +126,60 @@ export default function MessageInput({ sessionId, userId, participants = [], cat
         }
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const handleFileUpload = async (file: File) => {
+        if (!file.type.startsWith('image/')) {
+            alert('Currently only images are supported for evidence checking.')
+            return
+        }
+        setIsUploading(true)
+        try {
+            // Read file to Base64
+            const base64String = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader()
+                reader.readAsDataURL(file)
+                reader.onload = () => resolve(reader.result as string)
+                reader.onerror = error => reject(error)
+            })
+
+            // Base64 includes 'data:image/jpeg;base64,' scheme at the front. Split it out.
+            const mimeType = base64String.split(';')[0].split(':')[1]
+            const b64Data = base64String.split(',')[1]
+
+            // Send to our local Gemini Vision endpoint
+            const res = await fetch('/api/analyze-image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ imageBase64: b64Data, mimeType })
+            })
+
+            if (!res.ok) {
+                const errorData = await res.json()
+                throw new Error(errorData.error || 'Failed to analyze image')
+            }
+
+            const { text } = await res.json()
+
+            // Append the extracted text to the message box gracefully
+            setContent(prev => prev + (prev.trim() === '' ? '' : '\n\n') + `*Image Attached: ${file.name}*\n> [VISION AI EXTRACTED DATA] \n> ${text.replace(/\n/g, '\n> ')}\n`)
+
+        } catch (error: any) {
+            console.error('Image parsing failed:', error)
+            alert('Image parsing failed: ' + error.message)
+        } finally {
+            setIsUploading(false)
+        }
+    }
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault()
+        const file = e.dataTransfer.files[0]
+        if (file) handleFileUpload(file)
+    }
+
     const handleSend = async () => {
         const trimmed = content.trim()
-        if (!trimmed || isSending) return
+        if (!trimmed || isSending || isUploading) return
         setIsSending(true)
         const generatedId = crypto.randomUUID()
         const { error } = await supabase.from('messages').insert({
@@ -218,7 +271,11 @@ export default function MessageInput({ sessionId, userId, participants = [], cat
             )}
 
             {/* Input card */}
-            <div className="bg-slate-50 border border-slate-200 rounded-[1.5rem] shadow-lg shadow-slate-100 flex flex-col gap-0 focus-within:border-emerald-300 focus-within:bg-white focus-within:shadow-emerald-100/50 transition-all">
+            <div
+                className={`bg-slate-50 border border-slate-200 rounded-[1.5rem] shadow-lg shadow-slate-100 flex flex-col gap-0 focus-within:border-emerald-300 focus-within:bg-white focus-within:shadow-emerald-100/50 transition-all ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}
+                onDragOver={e => e.preventDefault()}
+                onDrop={handleDrop}
+            >
                 {/* Type selector */}
                 <div className="flex items-center gap-1.5 px-4 pt-3 pb-2 overflow-x-auto no-scrollbar">
                     {(Object.entries(typeConfig) as [MessageType, typeof typeConfig[MessageType]][]).map(([t, cfg]) => (
@@ -238,6 +295,25 @@ export default function MessageInput({ sessionId, userId, participants = [], cat
 
                 {/* Textarea + send */}
                 <div className="flex items-end gap-3 px-4 pb-3">
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) handleFileUpload(e.target.files[0])
+                        }}
+                        accept="image/*"
+                        className="hidden"
+                    />
+                    <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                        className="p-2 mb-1 text-slate-400 hover:text-indigo-500 hover:bg-slate-100 rounded-xl transition-all border border-transparent hover:border-slate-200 shrink-0"
+                        title="Upload Image Evidence"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                        </svg>
+                    </button>
                     <textarea
                         ref={textareaRef}
                         value={content}

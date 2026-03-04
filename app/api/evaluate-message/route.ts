@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { createServerClientInstance } from '@/utils/supabase'
 import { shouldSageIntervene, AIScore } from '@/lib/metricsEngine'
+import { verifyClaimWithWebSearch } from '@/lib/webVerifier'
 
 // Initialize Groq Client
 const ai = new OpenAI({
@@ -48,7 +49,22 @@ export async function POST(req: NextRequest) {
         const sessionCategory = (targetMessage?.sessions as Record<string, unknown>)?.category || 'General';
         const sessionTitle = (targetMessage?.sessions as Record<string, unknown>)?.title || 'Discussion';
 
-        // 2. Call DeepSeek via OpenRouter (Strict JSON)
+        // 2. Fact Check Step (The Verifier)
+        let webContext = '';
+        let factCheckResult = null;
+        if (targetMessage.type === 'evidence' || targetMessage.type === 'claim') {
+            factCheckResult = await verifyClaimWithWebSearch(targetMessage.content);
+            webContext = `
+[LIVE FACT CHECK RESULTS]
+Is Factual: ${factCheckResult.is_factual}
+Summary: ${factCheckResult.summary}
+Source: ${factCheckResult.citation || 'None'}
+
+CRITICAL LLM INSTRUCTION: The user made a claim. A live web search just revealed the facts above. If their claim contradicts these facts, you MUST flag a 'logical_gap' and severely lower their 'global_grade'. Mention the live facts in your 'explanation'.
+`;
+        }
+
+        // 3. Call DeepSeek via OpenRouter (Strict JSON)
         const systemInstruction = `
 You are a brilliant, warm, and highly empathetic cognitive coach monitoring a team's collaboration session.
 The current session category is: "${sessionCategory}".
@@ -81,6 +97,7 @@ ${sessionHistory}
 ---
 Target Message to Evaluate:
 [${targetMessage.type.toUpperCase()}] ${(targetMessage.profiles as unknown as { name: string })?.name || 'User'}: ${targetMessage.content}
+${webContext}
 `
 
         const response = await ai.chat.completions.create({
@@ -102,10 +119,13 @@ Target Message to Evaluate:
         const richEvaluationPayload = {
             global_grade: scoreData.global_grade,
             live_advice: scoreData.live_advice,
-            user_grades: scoreData.user_grades
+            user_grades: scoreData.user_grades,
+            fact_check_status: factCheckResult ? (factCheckResult.is_factual ? 'verified' : 'disputed') : undefined,
+            fact_check_citation: factCheckResult?.citation || undefined,
+            fact_check_summary: factCheckResult?.summary || undefined
         }
 
-        // 3. Delete existing score if this is an edit
+        // 4. Delete existing score if this is an edit
         if (isEdit) {
             const { error: deleteError } = await supabase
                 .from('ai_scores')
