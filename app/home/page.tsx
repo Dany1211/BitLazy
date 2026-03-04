@@ -146,8 +146,8 @@ export default async function HomePage() {
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto px-6 py-10">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 mb-16 items-start">
+            <main className="max-w-7xl mx-auto px-6 py-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10 items-start">
                     <div className="lg:col-span-2">
                         <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-500 mb-1">Welcome back</p>
                         <h1 className="text-4xl font-black tracking-tight text-[#0D0D0D] mb-4">
@@ -181,13 +181,13 @@ export default async function HomePage() {
                     </div>
                 </div>
 
-                <div className="mb-8">
+                <div className="mb-6">
                     <h2 className="text-2xl font-black tracking-tight text-[#0D0D0D]">Workspaces</h2>
                     <p className="text-sm text-gray-500 font-medium mt-1">Each space is designed for a different kind of collaborative thinking.</p>
                 </div>
 
                 {/* Workspace Cards with Visibility Toggle */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
                     {spaces.map((space) => (
                         <div key={space.id} className="space-card bg-white rounded-2xl flex flex-col">
                             <div className="p-6 flex flex-col h-full">
@@ -244,8 +244,8 @@ export default async function HomePage() {
                 </div>
 
                 {/* History Section with Category Badges */}
-                <div className="border-t border-gray-100 pt-16">
-                    <div className="flex items-center justify-between mb-8">
+                <div className="border-t border-gray-100 pt-10">
+                    <div className="flex items-center justify-between mb-6">
                         <h2 className="text-2xl font-black tracking-tight text-[#0D0D0D]">History</h2>
                         <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{sessions?.length || 0} Total Sessions</span>
                     </div>
@@ -297,7 +297,7 @@ export default async function HomePage() {
                 </div>
             </main>
 
-            <footer className="py-10 border-t border-gray-100 text-center">
+            <footer className="py-6 border-t border-gray-100 text-center">
                 <span className="text-xs text-gray-300 font-medium">© 2026 Bitlazy — Deep Intelligence</span>
             </footer>
         </div>
