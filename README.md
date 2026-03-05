@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Collaborative Intelligence Learning Platform
 
-## Getting Started
+A collaborative learning environment where students solve problems together while an AI facilitator guides discussion quality and reasoning.
 
-First, run the development server:
+Instead of focusing on **individual answers**, the platform focuses on **collective intelligence and knowledge building through dialogue**.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Overview
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Traditional learning tools measure individual performance.  
+This platform measures how effectively a group **reasons, questions, challenges ideas, and constructs knowledge together**.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Learners participate in structured discussions while an AI companion helps guide the conversation and encourage deeper thinking.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## Key Features
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Structured Discussions**  
+  Messages follow reasoning types such as claims, evidence, questions, and counterarguments to promote logical thinking.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **AI Learning Companion**  
+  An AI facilitator participates in discussions by asking guiding questions and encouraging deeper reasoning.
 
-## Deploy on Vercel
+- **Contribution Quality Insights**  
+  The system evaluates how meaningful each contribution is within the discussion.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Collaborative Learning Analytics**  
+  Real-time metrics help visualize discussion quality, participation balance, and reasoning depth.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Real-Time Collaboration**  
+  Participants interact live with active presence tracking and dynamic updates.
+
+---
+
+## How It Helps Learning
+
+The platform shifts learning from **individual problem solving** to **collaborative knowledge construction**, helping learners develop:
+
+- Critical thinking  
+- Evidence-based reasoning  
+- Collaborative problem solving  
+- Deeper conceptual understanding  
+
+---
+
+## Tech Stack
+
+- **Frontend:** Next.js, React  
+- **Backend:** Supabase  
+- **AI:** Gemini API  
+- **Realtime:** Supabase Realtime
+
+---
+
+## Vision
+
+To build learning environments where **AI supports human reasoning**, helping groups think better together rather than simply providing answers.
